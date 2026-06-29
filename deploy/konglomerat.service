@@ -1,0 +1,26 @@
+# systemd service untuk Konglomerat (Next.js standalone).
+# Pasang: ganti __USER__ dengan user VM-mu (hasil `whoami`), lalu:
+#   sudo cp deploy/konglomerat.service /etc/systemd/system/konglomerat.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now konglomerat
+#
+# Catatan path: ExecStart memakai Bun (`which bun` → biasanya ~/.bun/bin/bun).
+# Server di-bind ke 127.0.0.1 saja — diakses publik lewat Caddy (80/443),
+# jadi port 3737 tidak terbuka langsung ke internet.
+
+[Unit]
+Description=Konglomerat game server (Next.js standalone)
+After=network.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=/home/__USER__/game-monopoly
+Environment=NODE_ENV=production
+Environment=PORT=3737
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/home/__USER__/.bun/bin/bun .next/standalone/server.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

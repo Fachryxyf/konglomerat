@@ -1,0 +1,53 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+import MobileWarning from "@/components/monopoly/MobileWarning";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Konglomerat — Permainan Properti & Ekonomi",
+  description: "Bangun imperium properti & ekonomi di Kota Raya. Permainan papan strategi ekonomi 2-8 pemain (human & AI), dibangun dengan Next.js + TypeScript.",
+  keywords: ["Konglomerat", "board game", "permainan papan", "strategi ekonomi", "properti", "Next.js", "TypeScript", "React"],
+  icons: {
+    icon: "/logo.svg",
+  },
+  openGraph: {
+    title: "Konglomerat",
+    description: "Bangun imperium properti & ekonomi di Kota Raya — 2-8 pemain, mix human & AI.",
+    siteName: "Konglomerat",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Konglomerat",
+    description: "Bangun imperium properti & ekonomi di Kota Raya — 2-8 pemain, mix human & AI.",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
+        {children}
+        <MobileWarning />
+        <Toaster />
+      </body>
+    </html>
+  );
+}
