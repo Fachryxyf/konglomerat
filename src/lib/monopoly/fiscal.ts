@@ -1,12 +1,13 @@
-import type { Player } from "./types";
+import type { Player, LogMsg } from "./types";
 import { rng } from "./rng";
 
 export type FiscalKind = "TAX" | "INFLATION";
 
+// Choices reference i18n keys; localized copy lives in dict/events.ts.
 export interface FiscalChoice {
   id: string;
-  label: string;
-  desc: string;
+  labelKey: string;
+  descKey: string;
 }
 
 // A scheduled "Fiscal Year" (every 12 rounds). Themes alternate between a
@@ -14,11 +15,12 @@ export interface FiscalChoice {
 // (human via modal, AI automatically) that resolves differently by wealth.
 export interface FiscalDef {
   kind: FiscalKind;
-  title: string;
-  intro: string;
+  titleKey: string;
+  introKey: string;
   choices: FiscalChoice[];
-  // Apply a player's chosen policy. `net` is that player's net worth.
-  apply: (player: Player, choiceId: string, net: number) => { balance: number; note: string };
+  // Apply a player's chosen policy. `net` is that player's net worth. The note is
+  // a structured log message (key + params) so it re-renders per locale.
+  apply: (player: Player, choiceId: string, net: number) => { balance: number; note: LogMsg };
   // What the AI picks given its situation.
   aiChoice: (player: Player, net: number, liquidatable: number) => string;
 }
@@ -27,21 +29,21 @@ const clamp0 = (n: number) => Math.max(0, Math.round(n));
 
 export const FISCAL_TAX: FiscalDef = {
   kind: "TAX",
-  title: "Tahun Fiskal: Reformasi Pajak",
-  intro: "Pemerintah memungut pajak kekayaan progresif — makin kaya, makin besar tarifnya. Pilih sikapmu:",
+  titleKey: "fiscal.tax.title",
+  introKey: "fiscal.tax.intro",
   choices: [
-    { id: "PAY", label: "Patuh — Bayar Pajak", desc: "Bayar pajak progresif (5–12% dari kekayaan bersih) dengan tertib. Aman." },
-    { id: "EVADE", label: "Mangkir — Hindari Pajak", desc: "55% lolos tanpa bayar; 45% ketahuan dan kena denda 1,6× lipat. Judi." },
+    { id: "PAY", labelKey: "fiscal.tax.pay.label", descKey: "fiscal.tax.pay.desc" },
+    { id: "EVADE", labelKey: "fiscal.tax.evade.label", descKey: "fiscal.tax.evade.desc" },
   ],
-  apply: (player, choiceId, net) => {
+  apply: (player, choiceId, net): { balance: number; note: LogMsg } => {
     const rate = net > 2500 ? 0.12 : net > 1200 ? 0.08 : 0.05;
     const tax = clamp0(net * rate);
     if (choiceId === "EVADE") {
-      if (rng() < 0.55) return { balance: player.balance, note: `${player.name} lolos dari pajak (tidak bayar).` };
+      if (rng() < 0.55) return { balance: player.balance, note: { key: "log.fiscal.evadeWin", params: { name: player.name } } };
       const penalty = clamp0(tax * 1.6);
-      return { balance: player.balance - penalty, note: `${player.name} ketahuan mangkir pajak — denda $${penalty}.` };
+      return { balance: player.balance - penalty, note: { key: "log.fiscal.evadeCaught", params: { name: player.name, penalty } } };
     }
-    return { balance: player.balance - tax, note: `${player.name} membayar pajak kekayaan $${tax}.` };
+    return { balance: player.balance - tax, note: { key: "log.fiscal.pay", params: { name: player.name, tax } } };
   },
   aiChoice: (player, net, liquidatable) => {
     const rate = net > 2500 ? 0.12 : net > 1200 ? 0.08 : 0.05;
@@ -53,18 +55,18 @@ export const FISCAL_TAX: FiscalDef = {
 
 export const FISCAL_INFLATION: FiscalDef = {
   kind: "INFLATION",
-  title: "Tahun Fiskal: Inflasi Melonjak",
-  intro: "Inflasi menggerus nilai uang tunai, sementara aset menguat. Pilih strategimu:",
+  titleKey: "fiscal.inflation.title",
+  introKey: "fiscal.inflation.intro",
   choices: [
-    { id: "HOLD", label: "Simpan Tunai", desc: "Kas terpotong 8% oleh inflasi. Konservatif." },
-    { id: "INVEST", label: "Borong Aset (Spekulasi)", desc: "Kas terpotong 15%, tapi dapat +$60 per properti yang dimiliki. Untung kalau aset banyak." },
+    { id: "HOLD", labelKey: "fiscal.inflation.hold.label", descKey: "fiscal.inflation.hold.desc" },
+    { id: "INVEST", labelKey: "fiscal.inflation.invest.label", descKey: "fiscal.inflation.invest.desc" },
   ],
-  apply: (player, choiceId) => {
+  apply: (player, choiceId): { balance: number; note: LogMsg } => {
     if (choiceId === "INVEST") {
       const after = clamp0(player.balance * 0.85) + player.properties.length * 60;
-      return { balance: after, note: `${player.name} borong aset: +$${player.properties.length * 60} dari ${player.properties.length} properti.` };
+      return { balance: after, note: { key: "log.fiscal.invest", params: { name: player.name, gain: player.properties.length * 60, count: player.properties.length } } };
     }
-    return { balance: clamp0(player.balance * 0.92), note: `${player.name} simpan tunai — terpotong inflasi 8%.` };
+    return { balance: clamp0(player.balance * 0.92), note: { key: "log.fiscal.hold", params: { name: player.name } } };
   },
   aiChoice: (player) => (player.properties.length >= 3 ? "INVEST" : "HOLD"),
 };

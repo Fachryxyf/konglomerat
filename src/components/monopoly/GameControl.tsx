@@ -5,8 +5,10 @@ import { useGame } from "@/lib/monopoly/gameStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dices, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export default function GameControl() {
+  const t = useT();
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
   const turnPhase = useGame((s) => s.turnPhase);
@@ -50,7 +52,7 @@ export default function GameControl() {
     <div className="w-full min-h-full flex flex-col items-center justify-between gap-2 p-2 sm:p-4 text-white">
       {/* Top: Current player */}
       <div className="text-center shrink-0">
-        <div className="text-[10px] sm:text-xs text-emerald-100 uppercase tracking-wider">Giliran</div>
+        <div className="text-[10px] sm:text-xs text-emerald-100 uppercase tracking-wider">{t("ui.control.turn")}</div>
         <div className="flex items-center justify-center gap-2 mt-1">
           <div
             className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm sm:text-lg shadow-lg ring-2 ring-white"
@@ -71,14 +73,14 @@ export default function GameControl() {
               player.difficulty === "MEDIUM" && "bg-amber-400",
               player.difficulty === "HARD" && "bg-rose-400",
             )} />
-            AI {player.difficulty === "EASY" ? "Mudah" : player.difficulty === "MEDIUM" ? "Menengah" : "Sulit"}
+            {t("ui.player.aiTitle", { diff: t(`ui.ai.${player.difficulty.toLowerCase()}.label`) })}
           </div>
         )}
         {player.inJail && (
-          <div className="text-[10px] sm:text-xs mt-1 inline-flex items-center gap-1 text-red-300 font-semibold"><Lock className="w-3 h-3" /> Di Penjara ({player.jailTurns}/3)</div>
+          <div className="text-[10px] sm:text-xs mt-1 inline-flex items-center gap-1 text-red-300 font-semibold"><Lock className="w-3 h-3" /> {t("ui.control.inJail", { n: player.jailTurns })}</div>
         )}
         {doublesCount > 0 && (
-          <div className="text-[10px] sm:text-xs mt-1 inline-flex items-center gap-1 text-yellow-300"><Dices className="w-3 h-3" /> Kembar: {doublesCount}/3</div>
+          <div className="text-[10px] sm:text-xs mt-1 inline-flex items-center gap-1 text-yellow-300"><Dices className="w-3 h-3" /> {t("ui.control.doubles", { n: doublesCount })}</div>
         )}
       </div>
 
@@ -103,13 +105,13 @@ export default function GameControl() {
             size="lg"
             className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-sm sm:text-base animate-pulse-button"
           >
-            <Dices className="w-4 h-4 mr-1.5" /> LEMPAR DADU
-            <span className="ml-1.5 text-[10px] font-normal opacity-70">(Spasi)</span>
+            <Dices className="w-4 h-4 mr-1.5" /> {t("ui.control.roll")}
+            <span className="ml-1.5 text-[10px] font-normal opacity-70">{t("ui.control.spaceHint")}</span>
           </Button>
         )}
         {turnPhase === "WAITING_ROLL" && isHuman && player.inJail && (
           <div className="space-y-1">
-            <div className="text-[10px] text-center text-red-200 font-semibold inline-flex items-center gap-1 justify-center w-full"><Lock className="w-3 h-3" /> Pilihan Penjara:</div>
+            <div className="text-[10px] text-center text-red-200 font-semibold inline-flex items-center gap-1 justify-center w-full"><Lock className="w-3 h-3" /> {t("ui.control.jailChoice")}</div>
             <Button
               onClick={() => jailDecision("PAY")}
               size="sm"
@@ -117,7 +119,7 @@ export default function GameControl() {
               className="w-full text-xs h-8"
               disabled={player.balance < 50}
             >
-              Bayar $50
+              {t("ui.control.payBail")}
             </Button>
             {player.getOutOfJailCards > 0 && (
               <Button
@@ -126,7 +128,7 @@ export default function GameControl() {
                 variant="secondary"
                 className="w-full text-xs h-8"
               >
-                Pakai Kartu GOOJ ({player.getOutOfJailCards})
+                {t("ui.control.useGooj", { n: player.getOutOfJailCards })}
               </Button>
             )}
             <Button
@@ -134,7 +136,7 @@ export default function GameControl() {
               size="sm"
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-xs h-8"
             >
-              <Dices className="w-3.5 h-3.5 mr-1" /> Lempar Dadu
+              <Dices className="w-3.5 h-3.5 mr-1" /> {t("ui.control.rollShort")}
             </Button>
           </div>
         )}
@@ -144,22 +146,22 @@ export default function GameControl() {
             size="lg"
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm sm:text-base"
           >
-            AKHIRI GILIRAN <ArrowRight className="w-4 h-4 ml-1.5" />
+            {t("ui.control.endTurn")} <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         )}
         {(turnPhase === "ROLLING_DICE" || turnPhase === "MOVING" || turnPhase === "ACTION" || turnPhase === "CARD_DRAW" || turnPhase === "AUCTION") && (
           <div className="text-center text-[10px] sm:text-xs text-emerald-100 italic animate-pulse">
-            {getPhaseText(turnPhase)}
+            {(() => { const k = getPhaseKey(turnPhase); return k ? t(k) : ""; })()}
           </div>
         )}
         {player.type === "AI" && turnPhase === "WAITING_ROLL" && (
           <div className="text-center text-[10px] sm:text-xs text-emerald-100 italic inline-flex items-center gap-1.5 justify-center w-full">
-            <Loader2 className="w-3 h-3 animate-spin" /> AI sedang berpikir...
+            <Loader2 className="w-3 h-3 animate-spin" /> {t("ui.control.aiThinking")}
           </div>
         )}
         {player.type === "AI" && turnPhase === "POST_ACTION" && (
           <div className="text-center text-[10px] sm:text-xs text-emerald-100 italic inline-flex items-center gap-1.5 justify-center w-full">
-            <Loader2 className="w-3 h-3 animate-spin" /> AI mengakhiri giliran...
+            <Loader2 className="w-3 h-3 animate-spin" /> {t("ui.control.aiEnding")}
           </div>
         )}
       </div>
@@ -167,18 +169,18 @@ export default function GameControl() {
   );
 }
 
-function getPhaseText(phase: string): string {
+function getPhaseKey(phase: string): string {
   switch (phase) {
     case "ROLLING_DICE":
-      return "Melempar dadu...";
+      return "ui.phase.rolling";
     case "MOVING":
-      return "Bergerak...";
+      return "ui.phase.moving";
     case "ACTION":
-      return "Memproses aksi...";
+      return "ui.phase.action";
     case "CARD_DRAW":
-      return "Mengambil kartu...";
+      return "ui.phase.cardDraw";
     case "AUCTION":
-      return "Lelang berlangsung...";
+      return "ui.phase.auction";
     default:
       return "";
   }

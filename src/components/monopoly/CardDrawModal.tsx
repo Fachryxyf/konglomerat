@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { HelpCircle, Gift, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
@@ -43,6 +44,7 @@ interface InnerProps {
 }
 
 function CardDrawModalInner({ pendingCard, dismissCard, isAITurn, currentPlayer, onClose }: InnerProps) {
+  const t = useT();
   const [countdown, setCountdown] = useState(2);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ function CardDrawModalInner({ pendingCard, dismissCard, isAITurn, currentPlayer,
     ? "bg-gradient-to-br from-orange-500 to-red-600"
     : "bg-gradient-to-br from-yellow-400 to-amber-600";
   const Icon = isChance ? HelpCircle : Gift;
-  const title = isChance ? "KESEMPATAN" : "DANA UMUM";
+  const deckName = t(`card.deck.${pendingCard.deck}`);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -79,25 +81,25 @@ function CardDrawModalInner({ pendingCard, dismissCard, isAITurn, currentPlayer,
             >
               {currentPlayer?.token}
             </span>
-            Kartu {title}
+            {t("ui.carddraw.title", { deck: deckName })}
           </DialogTitle>
         </DialogHeader>
         <div className={cn("rounded-lg p-6 text-white shadow-lg", bgClass)}>
           <div className="text-center mb-4">
             <div className="flex justify-center mb-2 animate-card-flip"><Icon className="w-16 h-16" strokeWidth={1.5} /></div>
-            <div className="text-lg font-bold uppercase tracking-wider">{title}</div>
+            <div className="text-lg font-bold uppercase tracking-wider">{deckName}</div>
             <div className="text-xs mt-1 opacity-90">
-              {currentPlayer?.name} mengambil kartu
+              {t("ui.carddraw.drawing", { name: currentPlayer?.name ?? "" })}
             </div>
           </div>
           <div className="bg-white/25 backdrop-blur rounded-md p-4 text-center text-base font-medium min-h-[80px] flex items-center justify-center">
-            {pendingCard.instruction}
+            {t(`card.${pendingCard.deck}.${pendingCard.id}`)}
           </div>
         </div>
         {isAITurn ? (
           <div className="text-center text-sm text-muted-foreground flex flex-col items-center justify-center gap-0.5 w-full">
-            <span className="inline-flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> AI memproses kartu... auto-lanjut dalam {countdown}s</span>
-            <span className="text-[11px] opacity-70">Tekan <kbd className="px-1 rounded bg-zinc-200 dark:bg-zinc-700">Spasi</kbd> untuk lewati</span>
+            <span className="inline-flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> {t("ui.carddraw.aiProcessing", { s: countdown })}</span>
+            <span className="text-[11px] opacity-70">{t("ui.carddraw.skipPre")} <kbd className="px-1 rounded bg-zinc-200 dark:bg-zinc-700">{t("ui.key.space")}</kbd> {t("ui.carddraw.skipPost")}</span>
           </div>
         ) : (
           <Button
@@ -107,7 +109,7 @@ function CardDrawModalInner({ pendingCard, dismissCard, isAITurn, currentPlayer,
             }}
             className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
-            Eksekusi & Lanjut
+            {t("ui.carddraw.execute")}
           </Button>
         )}
       </DialogContent>

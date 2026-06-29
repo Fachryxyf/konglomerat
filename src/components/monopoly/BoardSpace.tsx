@@ -8,22 +8,23 @@ import { cn } from "@/lib/utils";
 import type { ReactElement } from "react";
 import { HelpCircle, Gift, Train, Zap, Droplet, CircleParking, Siren, ArrowBigLeft, type LucideIcon } from "lucide-react";
 import { JailBarsIcon } from "./icons";
+import { useT } from "@/lib/i18n";
 
 type IconCmp = LucideIcon | ((p: { className?: string; strokeWidth?: number }) => ReactElement);
 
-// Icon + label for the four corner spaces.
-function cornerVisual(space: BoardSpace): { Icon: IconCmp; label: string; sub?: string; iconClass: string } {
+// Icon + label key for the four corner spaces (label resolved via i18n).
+function cornerVisual(space: BoardSpace): { Icon: IconCmp; labelKey: string; sub?: string; iconClass: string } {
   switch (space.type) {
     case "GO":
-      return { Icon: ArrowBigLeft, label: "MULAI", sub: "+$200", iconClass: "text-red-600 fill-red-600" };
+      return { Icon: ArrowBigLeft, labelKey: "ui.cell.go", sub: "+$200", iconClass: "text-red-600 fill-red-600" };
     case "JAIL":
-      return { Icon: JailBarsIcon, label: "PENJARA", iconClass: "text-orange-600" };
+      return { Icon: JailBarsIcon, labelKey: "ui.cell.jail", iconClass: "text-orange-600" };
     case "FREE_PARKING":
-      return { Icon: CircleParking, label: "PARKIR", iconClass: "text-sky-600" };
+      return { Icon: CircleParking, labelKey: "ui.cell.parking", iconClass: "text-sky-600" };
     case "GO_TO_JAIL":
-      return { Icon: Siren, label: "KE PENJARA", iconClass: "text-red-600" };
+      return { Icon: Siren, labelKey: "ui.cell.gotojail", iconClass: "text-red-600" };
     default:
-      return { Icon: HelpCircle, label: space.name, iconClass: "text-zinc-600" };
+      return { Icon: HelpCircle, labelKey: `board.${space.index}.name`, iconClass: "text-zinc-600" };
   }
 }
 
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Props) {
+  const t = useT();
   const space = getSpace(spaceIndex);
   const ownership = useGame((s) => s.ownership[spaceIndex]);
   const buildings = useGame((s) => s.buildings[spaceIndex]);
@@ -70,11 +72,11 @@ export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Pr
         )}
       >
         {(() => {
-          const { Icon, label, sub, iconClass } = cornerVisual(space);
+          const { Icon, labelKey, sub, iconClass } = cornerVisual(space);
           return (
             <div className="flex flex-col items-center justify-center gap-0.5 leading-none">
               <Icon className={cn("w-6 h-6 sm:w-7 sm:h-7", iconClass)} strokeWidth={2} />
-              <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-tight text-emerald-900 dark:text-emerald-100">{label}</div>
+              <div className="text-[8px] sm:text-[10px] font-bold uppercase tracking-tight text-emerald-900 dark:text-emerald-100">{t(labelKey)}</div>
               {sub && <div className="text-[8px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{sub}</div>}
             </div>
           );
@@ -121,7 +123,7 @@ export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Pr
             orientation === "right" && "top-0 right-0",
           )}
           style={{ backgroundColor: players[ownership.ownerId]?.color || "#888" }}
-          title={`Dimiliki: ${players[ownership.ownerId]?.name}`}
+          title={t("ui.badge.owned", { name: players[ownership.ownerId]?.name ?? "" })}
         />
       )}
 
@@ -131,7 +133,7 @@ export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Pr
           "absolute inset-0 bg-red-500/30 pointer-events-none",
         )}>
           <div className="absolute inset-0 flex items-center justify-center text-[8px] text-red-700 font-bold rotate-[-20deg]">
-            GADAI
+            {t("ui.badge.mortgaged")}
           </div>
         </div>
       )}
@@ -146,10 +148,10 @@ export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Pr
           orientation === "right" && "left-0 top-0 bottom-0 w-2.5 sm:w-3 flex-col items-center justify-center",
         )}>
           {buildings.hotel ? (
-            <div className="w-2.5 h-1.5 sm:w-3 sm:h-2 bg-red-600 rounded-[1px] ring-1 ring-white shadow-sm" title="Hotel" />
+            <div className="w-2.5 h-1.5 sm:w-3 sm:h-2 bg-red-600 rounded-[1px] ring-1 ring-white shadow-sm" title={t("ui.badge.hotel")} />
           ) : (
             Array.from({ length: buildings.houses }).map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-[1px] ring-1 ring-white shadow-sm" title="Rumah" />
+              <div key={i} className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-[1px] ring-1 ring-white shadow-sm" title={t("ui.badge.house")} />
             ))
           )}
         </div>
@@ -161,7 +163,7 @@ export default function BoardSpace({ spaceIndex, orientation, onSpaceClick }: Pr
         colorBar && (orientation === "bottom" ? "pt-3.5 sm:pt-4" : orientation === "top" ? "pb-3.5 sm:pb-4" : orientation === "left" ? "pr-3 sm:pr-3.5" : "pl-3 sm:pl-3.5"),
       )}>
         <div className="shrink-0 w-full text-[8px] sm:text-[10px] md:text-[11px] font-semibold leading-[1.1] line-clamp-2 break-words hyphens-auto text-zinc-700 dark:text-zinc-300">
-          {space.name}
+          {t(`board.${spaceIndex}.name`)}
         </div>
         {(space.type === "PROPERTY" || space.type === "RAILROAD" || space.type === "UTILITY") && (
           <div className="text-[8px] sm:text-[10px] md:text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 tabular-nums inline-flex items-center justify-center gap-0.5">

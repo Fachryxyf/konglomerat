@@ -61,57 +61,48 @@ export function loanInstallment(loan: Loan, centralRate: number): { interest: nu
 
 // ----- Autonomous monetary + regulatory policy -----
 
+// `id` is a stable key; localized title/detail live in the i18n dictionary
+// (see dict/events.ts → `policy.<id>.title` / `.detail`).
 export interface MonetaryClimate {
   id: string;
-  title: string;
   // produce next policy values from the previous ones
-  next: (prev: { centralRate: number; reg: Regulations }) => { centralRate: number; reg: Regulations; detail: string };
+  next: (prev: { centralRate: number; reg: Regulations }) => { centralRate: number; reg: Regulations };
 }
 
 const CLIMATES: MonetaryClimate[] = [
   {
     id: "BOOM",
-    title: "Ekspansi Ekonomi",
     next: ({ centralRate, reg }) => ({
       centralRate: clampRate(centralRate + 0.02),
       reg: { rentMod: clampRent(reg.rentMod + 0.1), propertyTaxRate: clampTax(reg.propertyTaxRate) },
-      detail: "Permintaan memanas — Bank Sentral menaikkan suku bunga; sewa naik (deregulasi).",
     }),
   },
   {
     id: "RECESSION",
-    title: "Resesi & Stimulus",
     next: ({ centralRate, reg }) => ({
       centralRate: clampRate(centralRate - 0.025),
       reg: { rentMod: clampRent(reg.rentMod - 0.12), propertyTaxRate: 0 },
-      detail: "Ekonomi lesu — Bank Sentral memangkas bunga untuk stimulus; pemerintah berlakukan kontrol sewa.",
     }),
   },
   {
     id: "INFLATION",
-    title: "Lonjakan Inflasi",
     next: ({ centralRate, reg }) => ({
       centralRate: clampRate(centralRate + 0.035),
       reg: { rentMod: clampRent(reg.rentMod + 0.08), propertyTaxRate: clampTax(reg.propertyTaxRate + 0.01) },
-      detail: "Inflasi melonjak — bunga dinaikkan agresif; pajak properti diberlakukan untuk meredam.",
     }),
   },
   {
     id: "AUSTERITY",
-    title: "Pengetatan Fiskal",
     next: ({ centralRate, reg }) => ({
       centralRate: clampRate(centralRate + 0.005),
       reg: { rentMod: clampRent(reg.rentMod), propertyTaxRate: clampTax(reg.propertyTaxRate + 0.02) },
-      detail: "Pemerintah memperketat anggaran — pajak properti per-ronde dinaikkan.",
     }),
   },
   {
     id: "REFORM",
-    title: "Normalisasi Kebijakan",
     next: ({ centralRate }) => ({
       centralRate: clampRate(DEFAULT_CENTRAL_RATE + (centralRate - DEFAULT_CENTRAL_RATE) * 0.5),
       reg: { rentMod: 1, propertyTaxRate: clampTax(0.005) },
-      detail: "Kebijakan dinormalisasi — bunga & regulasi kembali mendekati netral.",
     }),
   },
 ];
@@ -119,12 +110,11 @@ const CLIMATES: MonetaryClimate[] = [
 export function rollMonetaryPolicy(prev: { centralRate: number; reg: Regulations }): {
   centralRate: number;
   reg: Regulations;
-  title: string;
-  detail: string;
+  id: string;
 } {
   const climate = CLIMATES[Math.floor(rng() * CLIMATES.length)];
   const out = climate.next(prev);
-  return { centralRate: out.centralRate, reg: out.reg, title: climate.title, detail: out.detail };
+  return { centralRate: out.centralRate, reg: out.reg, id: climate.id };
 }
 
 // Apply the active rent regulation to a rent amount.

@@ -16,12 +16,14 @@ import type { PropertySpace } from "@/lib/monopoly/types";
 import { aiAuctionBid } from "@/lib/monopoly/ai";
 import { cn } from "@/lib/utils";
 import { Gavel } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
 }
 
 export default function AuctionModal({ onClose }: Props) {
+  const t = useT();
   const auction = useGame((s) => s.auction);
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
@@ -85,32 +87,32 @@ export default function AuctionModal({ onClose }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Gavel className="w-5 h-5 text-pink-500" /> Lelang: {space.name}
+            <Gavel className="w-5 h-5 text-pink-500" /> {t("ui.auction.title", { space: t(`board.${auction.propertyIndex}.name`) })}
           </DialogTitle>
           <DialogDescription>
-            Harga asli ${price} • {auction.participants.length} peserta aktif
+            {t("ui.auction.subtitle", { price, n: auction.participants.length })}
           </DialogDescription>
         </DialogHeader>
 
         {/* Property mini-card */}
         <div className="border-2 rounded-lg overflow-hidden shadow" style={{ borderColor: colorHex }}>
           <div className="text-white text-center py-1 text-xs font-bold" style={{ backgroundColor: colorHex }}>
-            {space.name}
+            {t(`board.${auction.propertyIndex}.name`)}
           </div>
           <div className="p-2 bg-white dark:bg-zinc-900 text-xs text-center">
-            Harga: ${price}
+            {t("ui.auction.price", { price })}
           </div>
         </div>
 
         {/* Current bid */}
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-center">
-          <div className="text-xs text-amber-700 dark:text-amber-400">Tawaran Tertinggi</div>
+          <div className="text-xs text-amber-700 dark:text-amber-400">{t("ui.auction.highestBid")}</div>
           <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">
             ${auction.currentBid}
           </div>
           {auction.currentBidderId !== null && (
             <div className="text-xs mt-1">
-              oleh {players[auction.currentBidderId]?.token} {players[auction.currentBidderId]?.name}
+              {t("ui.auction.by")} {players[auction.currentBidderId]?.token} {players[auction.currentBidderId]?.name}
             </div>
           )}
         </div>
@@ -143,14 +145,14 @@ export default function AuctionModal({ onClose }: Props) {
         {isHumanTurn && humanPlayer ? (
           <div className="space-y-2">
             <div className="text-sm text-center font-medium">
-              Giliran {humanPlayer.name} menawar
+              {t("ui.auction.yourTurn", { name: humanPlayer.name })}
             </div>
             <div className="flex gap-2">
               <Input
                 type="number"
                 value={bidInput}
                 onChange={(e) => setBidInput(e.target.value)}
-                placeholder={`Min $${minNextBid}`}
+                placeholder={t("ui.auction.min", { v: minNextBid })}
                 min={minNextBid}
                 max={humanPlayer.balance}
               />
@@ -159,7 +161,7 @@ export default function AuctionModal({ onClose }: Props) {
                 disabled={!bidInput || parseInt(bidInput, 10) < minNextBid || parseInt(bidInput, 10) > humanPlayer.balance}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                Tawar
+                {t("ui.auction.bid")}
               </Button>
             </div>
             <div className="flex gap-1.5 flex-wrap">
@@ -180,22 +182,22 @@ export default function AuctionModal({ onClose }: Props) {
                 onClick={() => auctionLeave(currentBidderId)}
                 className="text-xs text-red-600 hover:text-red-700"
               >
-                Keluar dari lelang
+                {t("ui.auction.leave")}
               </Button>
             </div>
           </div>
         ) : (
           <div className="text-center text-sm text-muted-foreground italic">
             {currentBidderId !== undefined && players[currentBidderId]
-              ? `${players[currentBidderId].name} sedang menawar...`
-              : "Menunggu..."}
+              ? t("ui.auction.bidding", { name: players[currentBidderId].name })
+              : t("ui.auction.waiting")}
           </div>
         )}
 
         {/* End auction button (debug / manual) */}
         {auction.participants.length === 1 && auction.currentBid > 0 && (
           <Button onClick={endAuction} className="w-full bg-blue-600 hover:bg-blue-700">
-            Selesaikan Lelang
+            {t("ui.auction.finish")}
           </Button>
         )}
       </DialogContent>

@@ -30,8 +30,10 @@ import BankModal from "@/components/monopoly/BankModal";
 import GovernmentModal from "@/components/monopoly/GovernmentModal";
 import GuideModal from "@/components/monopoly/GuideModal";
 import BrandMark from "@/components/monopoly/BrandMark";
+import LanguageToggle from "@/components/monopoly/LanguageToggle";
 import MobileWarning from "@/components/monopoly/MobileWarning";
 import { getSpace } from "@/lib/monopoly/utils";
+import { useT } from "@/lib/i18n";
 import {
   LayoutGrid, Layers, RotateCcw, Check, List, Users, Lightbulb,
   Sparkles, X, Landmark, Scale, BookOpen,
@@ -69,6 +71,7 @@ const EVENT_TIER_STYLE: Record<string, {
 };
 
 export default function Home() {
+  const tr = useT();
   const players = useGame((s) => s.players);
   const turnPhase = useGame((s) => s.turnPhase);
   const pendingSpaceAction = useGame((s) => s.pendingSpaceAction);
@@ -190,7 +193,7 @@ export default function Home() {
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center gap-2 bg-emerald-50 dark:bg-zinc-950 text-emerald-700 dark:text-emerald-300">
-        <BrandMark className="w-6 h-6 animate-pulse" /> Memuat permainan…
+        <BrandMark className="w-6 h-6 animate-pulse" /> {tr("ui.loading")}
       </div>
     );
   }
@@ -222,8 +225,9 @@ export default function Home() {
           </h1>
           <div className="flex items-center gap-1.5">
             <div className="text-[10px] sm:text-xs md:text-sm hidden sm:block truncate max-w-[200px]">
-              Turn #{turn} • {players[currentPlayerIndex]?.name}
+              {tr("ui.header.turn", { turn, name: players[currentPlayerIndex]?.name ?? "" })}
             </div>
+            <LanguageToggle />
             <Button
               size="sm"
               variant="secondary"
@@ -234,7 +238,7 @@ export default function Home() {
               }}
               className="h-7 text-xs px-2 gap-1"
             >
-              <LayoutGrid className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Properti</span>
+              <LayoutGrid className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.properties")}</span>
             </Button>
             <Button
               size="sm"
@@ -242,7 +246,7 @@ export default function Home() {
               onClick={() => setShowCardCatalog(true)}
               className="h-7 text-xs px-2 gap-1"
             >
-              <Layers className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Kartu</span>
+              <Layers className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.cards")}</span>
             </Button>
             <Button
               size="sm"
@@ -250,7 +254,7 @@ export default function Home() {
               onClick={() => setShowBank(true)}
               className="h-7 text-xs px-2 gap-1"
             >
-              <Landmark className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Bank</span>
+              <Landmark className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.bank")}</span>
             </Button>
             <Button
               size="sm"
@@ -258,7 +262,7 @@ export default function Home() {
               onClick={() => setShowGov(true)}
               className="h-7 text-xs px-2 gap-1"
             >
-              <Scale className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Pemerintah</span>
+              <Scale className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.government")}</span>
             </Button>
             <Button
               size="sm"
@@ -266,25 +270,25 @@ export default function Home() {
               onClick={() => setShowGuide(true)}
               className="h-7 text-xs px-2 gap-1"
             >
-              <BookOpen className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Panduan</span>
+              <BookOpen className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.guide")}</span>
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="secondary" className="h-7 text-xs px-2 gap-1">
-                  <RotateCcw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Reset</span>
+                  <RotateCcw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{tr("ui.header.reset")}</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Reset permainan?</AlertDialogTitle>
+                  <AlertDialogTitle>{tr("ui.reset.title")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Semua progres (pemain, properti, uang, dan log) akan dihapus dan kamu kembali ke layar setup. Tindakan ini tidak bisa dibatalkan.
+                    {tr("ui.reset.desc")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogCancel>{tr("ui.common.cancel")}</AlertDialogCancel>
                   <AlertDialogAction onClick={() => reset()} className="bg-red-600 hover:bg-red-700">
-                    Ya, reset
+                    {tr("ui.reset.confirm")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -308,7 +312,7 @@ export default function Home() {
           {/* Quick property filters */}
           <div className="shrink-0 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-2">
             <div className="text-[10px] font-semibold mb-1.5 text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-              <LayoutGrid className="w-3.5 h-3.5 text-emerald-600" /> Katalog Properti
+              <LayoutGrid className="w-3.5 h-3.5 text-emerald-600" /> {tr("ui.catalog.title")}
             </div>
             <div className="grid grid-cols-2 gap-1">
               <Button
@@ -321,7 +325,7 @@ export default function Home() {
                 }}
                 className="h-7 text-[10px] px-2 gap-1"
               >
-                <Check className="w-3 h-3" /> Tersedia
+                <Check className="w-3 h-3" /> {tr("ui.catalog.available")}
               </Button>
               <Button
                 size="sm"
@@ -333,7 +337,7 @@ export default function Home() {
                 }}
                 className="h-7 text-[10px] px-2 gap-1"
               >
-                <List className="w-3 h-3" /> Semua
+                <List className="w-3 h-3" /> {tr("ui.catalog.all")}
               </Button>
             </div>
             {/* Per-player quick view */}
@@ -347,7 +351,7 @@ export default function Home() {
                     setShowCatalog(true);
                   }}
                   className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] border hover:bg-accent transition"
-                  title={`Lihat properti ${p.name}`}
+                  title={tr("ui.viewProps", { name: p.name })}
                 >
                   <span>{p.token}</span>
                   <span className="hidden sm:inline">{p.name}</span>
@@ -360,7 +364,7 @@ export default function Home() {
           {/* Players */}
           <div className="shrink-0">
             <div className="text-xs font-semibold mb-1.5 text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5 px-1">
-              <Users className="w-3.5 h-3.5 text-emerald-600" /> Pemain
+              <Users className="w-3.5 h-3.5 text-emerald-600" /> {tr("ui.players")}
             </div>
             <PlayerPanel onPlayerAction={(id) => setManagePlayer(id)} />
           </div>
@@ -373,7 +377,7 @@ export default function Home() {
           {/* Help */}
           <div className="text-[11px] text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md border border-blue-200 dark:border-blue-900 shrink-0 flex gap-1.5">
             <Lightbulb className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-            <span><strong>Tips:</strong> Klik properti pemain untuk mengelola (bangun/gadai/trade). Klik <strong>Katalog</strong> di atas untuk lihat semua properti.</span>
+            <span><strong>{tr("ui.tips.label")}</strong> {tr("ui.tips.body")}</span>
           </div>
         </aside>
       </main>
@@ -386,7 +390,9 @@ export default function Home() {
             <div className={`flex items-start gap-3 rounded-xl border backdrop-blur px-4 py-3 shadow-xl ${t.box}`}>
               <Sparkles className={`w-6 h-6 shrink-0 mt-0.5 ${t.icon}`} />
               <div className="flex-1 min-w-0">
-                <div className={`text-[10px] font-bold uppercase tracking-widest ${t.label}`}>{t.tag}</div>
+                <div className={`text-[10px] font-bold uppercase tracking-widest ${t.label}`}>
+                  {eventMessage.tier === "MYTHOS" ? `★ ${tr("event.tier.MYTHOS")} ★` : tr(`event.tier.${eventMessage.tier}`)}
+                </div>
                 <div className={`font-bold text-sm ${t.title}`}>{eventMessage.title}</div>
                 <div className={`text-xs ${t.detail}`}>{eventMessage.detail}</div>
               </div>

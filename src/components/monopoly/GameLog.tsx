@@ -1,6 +1,7 @@
 "use client";
 
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import {
@@ -35,6 +36,7 @@ const KIND_ICONS: Record<string, LucideIcon> = {
 };
 
 export default function GameLog() {
+  const t = useT();
   const log = useGame((s) => s.log);
   const players = useGame((s) => s.players);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,10 +55,10 @@ export default function GameLog() {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 shrink-0">
         <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-          <ScrollText className="w-3.5 h-3.5 text-emerald-600" /> Event Log
+          <ScrollText className="w-3.5 h-3.5 text-emerald-600" /> {t("ui.log.title")}
         </div>
         <div className="text-[10px] text-muted-foreground">
-          {log.length} entri
+          {t("ui.log.entries", { n: log.length })}
         </div>
       </div>
 
@@ -67,7 +69,7 @@ export default function GameLog() {
       >
         {log.length === 0 ? (
           <div className="text-xs text-muted-foreground italic text-center py-4">
-            Belum ada aktivitas.
+            {t("ui.log.empty")}
           </div>
         ) : (
           <div className="space-y-1">
@@ -94,7 +96,7 @@ export default function GameLog() {
                           {player.token}
                         </span>
                       )}
-                      <span>{entry.message}</span>
+                      <span>{t(entry.msg.key, entry.msg.params)}</span>
                     </div>
                   </div>
                 </div>

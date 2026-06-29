@@ -8,8 +8,9 @@ export interface EventCtx {
 
 export interface WaveEvent {
   tier: EventTier;
-  title: string;
-  detail: string;
+  // Stable i18n key; localized title/detail live in dict/events.ts
+  // (`event.<key>.title` / `.detail`).
+  key: string;
   // Returns the updated players array. Implementations must leave bankrupt
   // players untouched and never push a balance below 0.
   apply: (players: Player[], ctx: EventCtx) => Player[];
@@ -27,20 +28,20 @@ const poorestId = (players: Player[]) =>
 
 // ===== REGULAR (50%) — small, friendly cash relief =====
 const REGULAR: WaveEvent[] = [
-  { tier: "REGULAR", title: "Semua Lewat GO", detail: "Setiap pemain seakan melewati GO dan menerima $200.", apply: (p) => each(p, () => 200) },
-  { tier: "REGULAR", title: "Dividen Bank", detail: "Bank membagikan dividen $150 ke setiap pemain.", apply: (p) => each(p, () => 150) },
-  { tier: "REGULAR", title: "Penjualan Saham", detail: "Setiap pemain menerima $40 per properti yang dimiliki (min $60).", apply: (p) => each(p, (pl) => Math.max(60, pl.properties.length * 40)) },
-  { tier: "REGULAR", title: "Dana Sosial Bank", detail: "Pemain berkas tipis (< $200) menerima $300, lainnya $100.", apply: (p) => each(p, (pl) => (pl.balance < 200 ? 300 : 100)) },
-  { tier: "REGULAR", title: "Warisan Keluarga", detail: "Setiap pemain menerima warisan tak terduga $200.", apply: (p) => each(p, () => 200) },
+  { tier: "REGULAR", key: "allPassGo", apply: (p) => each(p, () => 200) },
+  { tier: "REGULAR", key: "bankDividend", apply: (p) => each(p, () => 150) },
+  { tier: "REGULAR", key: "stockSale", apply: (p) => each(p, (pl) => Math.max(60, pl.properties.length * 40)) },
+  { tier: "REGULAR", key: "socialFund", apply: (p) => each(p, (pl) => (pl.balance < 200 ? 300 : 100)) },
+  { tier: "REGULAR", key: "inheritance", apply: (p) => each(p, () => 200) },
 ];
 
 // ===== SPECIAL (30%) — bigger or more targeted boosts =====
 const SPECIAL: WaveEvent[] = [
-  { tier: "SPECIAL", title: "Boom Real Estat", detail: "Harga properti melonjak — setiap pemain menerima $70 per properti (min $100).", apply: (p) => each(p, (pl) => Math.max(100, pl.properties.length * 70)) },
-  { tier: "SPECIAL", title: "Pengembalian Pajak", detail: "Setiap pemain menerima restitusi pajak sebesar 15% dari kasnya.", apply: (p) => each(p, (pl) => Math.ceil(pl.balance * 0.15)) },
-  { tier: "SPECIAL", title: "Bonus Pembangunan", detail: "Pengembang dapat insentif: +$70 per rumah dan +$160 per hotel yang dimiliki.", apply: (p, ctx) => each(p, (pl) => { const b = ctx.buildingCount(pl); return b.houses * 70 + b.hotels * 160; }) },
+  { tier: "SPECIAL", key: "realEstateBoom", apply: (p) => each(p, (pl) => Math.max(100, pl.properties.length * 70)) },
+  { tier: "SPECIAL", key: "taxRebate", apply: (p) => each(p, (pl) => Math.ceil(pl.balance * 0.15)) },
+  { tier: "SPECIAL", key: "buildBonus", apply: (p, ctx) => each(p, (pl) => { const b = ctx.buildingCount(pl); return b.houses * 70 + b.hotels * 160; }) },
   {
-    tier: "SPECIAL", title: "Menang Undian Kota", detail: "Satu pemain beruntung memenangkan undian kota senilai $500!",
+    tier: "SPECIAL", key: "cityLottery",
     apply: (p) => { const id = active(p)[Math.floor(rng() * active(p).length)].id; return p.map((pl) => pl.id === id ? { ...pl, balance: pl.balance + 500 } : pl); },
   },
 ];
@@ -48,7 +49,7 @@ const SPECIAL: WaveEvent[] = [
 // ===== RARE (15%) — dramatic, two-way swings =====
 const RARE: WaveEvent[] = [
   {
-    tier: "RARE", title: "Pajak Kekayaan", detail: "Pemain terkaya menyetor 25% kasnya, dibagi rata ke pemain lain.",
+    tier: "RARE", key: "wealthTax",
     apply: (p) => {
       const others = active(p); if (others.length < 2) return p;
       const rid = richestId(p);
@@ -58,9 +59,9 @@ const RARE: WaveEvent[] = [
       return p.map((pl) => pl.bankrupt ? pl : pl.id === rid ? { ...pl, balance: pl.balance - levy } : { ...pl, balance: pl.balance + share });
     },
   },
-  { tier: "RARE", title: "Krisis Moneter", detail: "Resesi melanda — setiap pemain kehilangan 20% kasnya ke bank.", apply: (p) => each(p, (pl) => -Math.floor(pl.balance * 0.2)) },
+  { tier: "RARE", key: "monetaryCrisis", apply: (p) => each(p, (pl) => -Math.floor(pl.balance * 0.2)) },
   {
-    tier: "RARE", title: "Jackpot Atlantic City", detail: "Keberuntungan berpihak pada yang tertinggal — pemain termiskin menang $700.",
+    tier: "RARE", key: "jackpot",
     apply: (p) => { const id = poorestId(p); return p.map((pl) => pl.id === id ? { ...pl, balance: pl.balance + 700 } : pl); },
   },
 ];
@@ -68,7 +69,7 @@ const RARE: WaveEvent[] = [
 // ===== MYTHOS (5%) — legendary, game-shaking =====
 const MYTHOS: WaveEvent[] = [
   {
-    tier: "MYTHOS", title: "Tangan Tak Terlihat", detail: "Pasar diatur ulang — seluruh kas dikumpulkan dan dibagi rata ke semua pemain.",
+    tier: "MYTHOS", key: "invisibleHand",
     apply: (p) => {
       const act = active(p); if (act.length === 0) return p;
       const pot = act.reduce((s, pl) => s + pl.balance, 0);
@@ -77,10 +78,10 @@ const MYTHOS: WaveEvent[] = [
     },
   },
   {
-    tier: "MYTHOS", title: "Imperium Sang Taipan", detail: "Sang taipan terkaya mengukuhkan kekuasaan — menerima $1.200!",
+    tier: "MYTHOS", key: "tycoonEmpire",
     apply: (p) => { const id = richestId(p); return p.map((pl) => pl.id === id ? { ...pl, balance: pl.balance + 1200 } : pl); },
   },
-  { tier: "MYTHOS", title: "Hujan Emas", detail: "Keajaiban langka — setiap pemain menerima $600.", apply: (p) => each(p, () => 600) },
+  { tier: "MYTHOS", key: "goldenRain", apply: (p) => each(p, () => 600) },
 ];
 
 const POOLS: Record<EventTier, WaveEvent[]> = { REGULAR, SPECIAL, RARE, MYTHOS };

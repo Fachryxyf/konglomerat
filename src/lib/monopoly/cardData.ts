@@ -339,47 +339,58 @@ export function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-// Kategorisasi kartu untuk tampilan katalog
-export type CardCategory = "Uang Masuk" | "Uang Keluar" | "Pergerakan" | "Penjara" | "Perbaikan" | "Interaksi Pemain" | "Lainnya";
+// Card categorization for the catalog view. Values are i18n keys (see
+// dict/cards.ts → `card.cat.<KEY>`) so labels follow the active locale.
+export type CardCategory =
+  | "CASH_IN"
+  | "CASH_OUT"
+  | "MOVE"
+  | "JAIL"
+  | "REPAIRS"
+  | "INTERACTION"
+  | "OTHER";
 
 export function getCardCategory(card: GameCard): CardCategory {
   switch (card.type) {
     case "COLLECT":
     case "COLLECT_FROM_EACH":
-      return "Uang Masuk";
+      return "CASH_IN";
     case "PAY":
     case "PAY_EACH":
-      return "Uang Keluar";
+      return "CASH_OUT";
     case "MOVE_TO":
     case "MOVE_TO_NEAREST":
     case "MOVE_SPACES":
-      return "Pergerakan";
+      return "MOVE";
     case "GO_TO_JAIL":
     case "GET_OUT_OF_JAIL":
-      return "Penjara";
+      return "JAIL";
     case "REPAIRS":
-      return "Perbaikan";
+      return "REPAIRS";
     default:
-      return "Lainnya";
+      return "OTHER";
   }
 }
 
+// i18n key for a category's display label.
+export const cardCategoryKey = (cat: CardCategory): string => `card.cat.${cat}`;
+
 export const CARD_CATEGORY_ICONS: Record<CardCategory, string> = {
-  "Uang Masuk": "💰",
-  "Uang Keluar": "💸",
-  "Pergerakan": "👣",
-  "Penjara": "🔒",
-  "Perbaikan": "🔧",
-  "Interaksi Pemain": "🤝",
-  "Lainnya": "📋",
+  CASH_IN: "💰",
+  CASH_OUT: "💸",
+  MOVE: "👣",
+  JAIL: "🔒",
+  REPAIRS: "🔧",
+  INTERACTION: "🤝",
+  OTHER: "📋",
 };
 
 export const CARD_CATEGORY_COLORS: Record<CardCategory, string> = {
-  "Uang Masuk": "#16a34a",
-  "Uang Keluar": "#dc2626",
-  "Pergerakan": "#2563eb",
-  "Penjara": "#9333ea",
-  "Perbaikan": "#ea580c",
-  "Interaksi Pemain": "#0891b2",
-  "Lainnya": "#71717a",
+  CASH_IN: "#16a34a",
+  CASH_OUT: "#dc2626",
+  MOVE: "#2563eb",
+  JAIL: "#9333ea",
+  REPAIRS: "#ea580c",
+  INTERACTION: "#0891b2",
+  OTHER: "#71717a",
 };

@@ -5,15 +5,17 @@ import BoardSpace from "./BoardSpace";
 import GameControl from "./GameControl";
 import { cn } from "@/lib/utils";
 import { HelpCircle, Gift } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 // A tilted stack of cards in the center of the board (purely decorative — the
 // real draw flow stays in the modal). Chance pile (orange) + Community Chest
 // (gold), placed diagonally like a classic Monopoly board.
 function CardDeck({ kind, className, tilt }: { kind: "CHANCE" | "CC"; className?: string; tilt: number }) {
+  const t = useT();
   const isChance = kind === "CHANCE";
   const color = isChance ? "#ea580c" : "#ca8a04";
   const Icon = isChance ? HelpCircle : Gift;
-  const label = isChance ? "KESEMPATAN" : "DANA UMUM";
+  const label = t(isChance ? "card.deck.CHANCE" : "card.deck.COMMUNITY_CHEST");
   return (
     <div className={cn("absolute pointer-events-none select-none", className)}>
       {/* white frame / slot the deck sits in */}
@@ -25,7 +27,7 @@ function CardDeck({ kind, className, tilt }: { kind: "CHANCE" | "CC"; className?
           {/* top card */}
           <div className="absolute inset-0 rounded-md shadow-lg flex flex-col items-center justify-center gap-1 text-white ring-1 ring-black/10" style={{ backgroundColor: color }}>
             <Icon className="w-[42%] h-[42%]" strokeWidth={2.25} />
-            <span className="text-[8px] sm:text-[10px] font-bold tracking-tight leading-none text-center px-1">{label}</span>
+            <span className="text-[8px] sm:text-[10px] font-bold tracking-tight leading-none text-center px-1 uppercase">{label}</span>
           </div>
         </div>
       </div>

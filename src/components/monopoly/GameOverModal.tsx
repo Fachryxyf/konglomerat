@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { getNetWorthPublic } from "@/lib/monopoly/gameStore";
 import { Trophy, RotateCcw, Crown } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
 }
 
 export default function GameOverModal({ onClose }: Props) {
+  const t = useT();
   const winnerId = useGame((s) => s.winnerId);
   const players = useGame((s) => s.players);
   const reset = useGame((s) => s.reset);
@@ -30,14 +32,14 @@ export default function GameOverModal({ onClose }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex justify-center"><Trophy className="w-12 h-12 text-yellow-500" /></div>
-          <DialogTitle className="text-center">Game Selesai!</DialogTitle>
+          <DialogTitle className="text-center">{t("ui.gameover.title")}</DialogTitle>
           <DialogDescription className="text-center">
-            <span className="text-lg font-bold text-emerald-600">{winner.name}</span> memenangkan permainan!
+            <span className="text-lg font-bold text-emerald-600">{winner.name}</span> {t("ui.gameover.desc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <div className="text-sm font-semibold text-center mb-2">Klasemen Akhir:</div>
+          <div className="text-sm font-semibold text-center mb-2">{t("ui.gameover.standings")}</div>
           {ranked.map((r, i) => (
             <div
               key={r.player.id}
@@ -53,7 +55,7 @@ export default function GameOverModal({ onClose }: Props) {
               <div className="flex-1">
                 <div className="font-medium text-sm">{r.player.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {r.player.bankrupt ? "Bangkrut" : "Aktif"}
+                  {r.player.bankrupt ? t("ui.gameover.bankrupt") : t("ui.gameover.active")}
                 </div>
               </div>
               <div className="text-sm font-bold tabular-nums">${r.netWorth.toLocaleString()}</div>
@@ -62,7 +64,7 @@ export default function GameOverModal({ onClose }: Props) {
         </div>
 
         <Button onClick={() => { reset(); onClose(); }} className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2">
-          <RotateCcw className="w-4 h-4" /> Main Lagi
+          <RotateCcw className="w-4 h-4" /> {t("ui.gameover.playAgain")}
         </Button>
       </DialogContent>
     </Dialog>

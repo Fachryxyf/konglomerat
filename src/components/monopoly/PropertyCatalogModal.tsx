@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import PropertyCard from "./PropertyCard";
 import SpaceDetailModal from "./SpaceDetailModal";
 import { LayoutGrid, List, Check, Star, Lock, Hotel, Home } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
@@ -22,6 +23,7 @@ interface Props {
 const COLOR_SET_ORDER = ["Brown", "LightBlue", "Pink", "Orange", "Red", "Yellow", "Green", "DarkBlue"] as const;
 
 export default function PropertyCatalogModal({ onClose, initialFilter = "all", initialPlayerId = null }: Props) {
+  const t = useT();
   const players = useGame((s) => s.players);
   const ownership = useGame((s) => s.ownership);
   const [filter, setFilter] = useState<"all" | "available" | "owned">(initialFilter);
@@ -98,10 +100,10 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LayoutGrid className="w-5 h-5 text-emerald-600" /> Katalog Properti
+            <LayoutGrid className="w-5 h-5 text-emerald-600" /> {t("ui.catalog.title")}
           </DialogTitle>
           <DialogDescription>
-            Lihat semua 28 properti ({stats.available} tersedia • {stats.owned} dimiliki • {stats.mortgaged} digadaikan)
+            {t("ui.propcat.desc", { avail: stats.available, owned: stats.owned, mort: stats.mortgaged })}
           </DialogDescription>
         </DialogHeader>
 
@@ -115,7 +117,7 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
               onClick={() => setFilter("all")}
               className="h-7 text-xs"
             >
-              Semua ({stats.total})
+              {t("ui.cardcat.all", { n: stats.total })}
             </Button>
             <Button
               size="sm"
@@ -123,7 +125,7 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
               onClick={() => setFilter("available")}
               className="h-7 text-xs"
             >
-              <Check className="w-3.5 h-3.5 mr-1" /> Tersedia ({stats.available})
+              <Check className="w-3.5 h-3.5 mr-1" /> {t("ui.propcat.available", { n: stats.available })}
             </Button>
             <Button
               size="sm"
@@ -131,20 +133,20 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
               onClick={() => setFilter("owned")}
               className="h-7 text-xs"
             >
-              Dimiliki ({stats.owned})
+              {t("ui.propcat.owned", { n: stats.owned })}
             </Button>
           </div>
 
           {/* Filter by player */}
           <div className="flex gap-1 items-center ml-auto">
-            <span className="text-[10px] text-muted-foreground">Pemilik:</span>
+            <span className="text-[10px] text-muted-foreground">{t("ui.propcat.owner")}</span>
             <Button
               size="sm"
               variant={filterPlayerId === null ? "default" : "outline"}
               onClick={() => setFilterPlayerId(null)}
               className="h-7 text-xs px-2"
             >
-              Semua
+              {t("ui.catalog.all")}
             </Button>
             {players.filter((p) => !p.bankrupt).map((p) => (
               <Button
@@ -169,7 +171,7 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
             onClick={() => setGroupByColor(!groupByColor)}
             className="h-7 text-xs"
           >
-            {groupByColor ? <><LayoutGrid className="w-3.5 h-3.5 mr-1" /> Group by color</> : <><List className="w-3.5 h-3.5 mr-1" /> Flat list</>}
+            {groupByColor ? <><LayoutGrid className="w-3.5 h-3.5 mr-1" /> {t("ui.propcat.groupByColor")}</> : <><List className="w-3.5 h-3.5 mr-1" /> {t("ui.propcat.flatList")}</>}
           </Button>
         </div>
 
@@ -178,7 +180,7 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
           <div className="p-2 pr-3">
             {filtered.length === 0 ? (
               <div className="text-center text-muted-foreground italic py-12">
-                Tidak ada properti yang cocok dengan filter ini.
+                {t("ui.propcat.noMatch")}
               </div>
             ) : groupByColor ? (
               <div className="space-y-4">
@@ -198,24 +200,17 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
                       <div className="flex items-center gap-2 mb-1.5">
                         <div className="w-4 h-4 rounded" style={{ backgroundColor: colorHex }} />
                         <div className="text-xs font-bold uppercase tracking-wide">
-                          {groupKey === "Brown" ? "Coklat" :
-                           groupKey === "LightBlue" ? "Biru Muda" :
-                           groupKey === "Pink" ? "Pink" :
-                           groupKey === "Orange" ? "Oranye" :
-                           groupKey === "Red" ? "Merah" :
-                           groupKey === "Yellow" ? "Kuning" :
-                           groupKey === "Green" ? "Hijau" :
-                           groupKey === "DarkBlue" ? "Biru Tua" :
-                           groupKey === "Railroad" ? "Stasiun Kereta" :
-                           "Perusahaan Utilitas"}
+                          {groupKey === "Railroad" ? t("ui.propcat.railroadGroup") :
+                           groupKey === "Utility" ? t("ui.propcat.utilityGroup") :
+                           t(`board.color.${groupKey}`)}
                         </div>
                         {isMonopoly && (
                           <div className="text-[10px] font-bold text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">
-                            <Star className="w-3 h-3 fill-current" /> MONOPOLI
+                            <Star className="w-3 h-3 fill-current" /> {t("ui.propcat.monopoly")}
                           </div>
                         )}
                         <div className="text-[10px] text-muted-foreground ml-auto">
-                          {items.length} properti
+                          {t("ui.propcat.nProps", { n: items.length })}
                         </div>
                       </div>
                       <div className={cn(
@@ -245,23 +240,23 @@ export default function PropertyCatalogModal({ onClose, initialFilter = "all", i
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-              <span>Monopoli (2x sewa dasar)</span>
+              <span>{t("ui.propcat.legend.monopoly")}</span>
             </div>
             <div className="flex items-center gap-1">
               <Lock className="w-3 h-3 text-red-500" />
-              <span>Digadaikan</span>
+              <span>{t("ui.propcat.legend.mortgaged")}</span>
             </div>
             <div className="flex items-center gap-1">
               <Hotel className="w-3 h-3 text-red-600" />
-              <span>Hotel</span>
+              <span>{t("ui.badge.hotel")}</span>
             </div>
             <div className="flex items-center gap-1">
               <Home className="w-3 h-3 text-emerald-600" />
-              <span>Rumah</span>
+              <span>{t("ui.badge.house")}</span>
             </div>
           </div>
           <Button size="sm" variant="outline" onClick={onClose} className="h-7 text-xs">
-            Tutup
+            {t("ui.common.close")}
           </Button>
         </div>
       </DialogContent>

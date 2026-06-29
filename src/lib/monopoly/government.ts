@@ -31,38 +31,17 @@ export function jailBail(jailCount: number, netWorth: number): number {
 
 export type CrimeId = "BRIBE_GUARD" | "LOBBY" | "EVADE" | "RIG_AUCTION";
 
+// `label`/`desc` live in the i18n dictionary (dict/ui.ts → `gov.crime.<id>.*`).
 export interface CrimeDef {
   id: CrimeId;
-  label: string;
-  desc: string;
   baseRisk: number; // catch chance before heat scaling
 }
 
 export const CRIMES: Record<CrimeId, CrimeDef> = {
-  BRIBE_GUARD: {
-    id: "BRIBE_GUARD",
-    label: "Suap Sipir Penjara",
-    desc: "Bayar suap untuk keluar penjara instan. Ketahuan: suap hangus, denda, tetap dipenjara.",
-    baseRisk: 0.2,
-  },
-  LOBBY: {
-    id: "LOBBY",
-    label: "Lobi Regulasi",
-    desc: "Suap pemerintah agar bebas pajak properti & sewa propertimu +10% sampai siklus berikutnya. Ketahuan: skandal & denda.",
-    baseRisk: 0.25,
-  },
-  EVADE: {
-    id: "EVADE",
-    label: "Gelapkan Pembukuan",
-    desc: "Atur sewa berikutnya yang kamu bayar jadi 40% saja. Kena audit: bayar penuh + denda 1,5× selisih (penjara bila heat tinggi).",
-    baseRisk: 0.3,
-  },
-  RIG_AUCTION: {
-    id: "RIG_AUCTION",
-    label: "Manipulasi Lelang",
-    desc: "Suap agar langsung menangkan lelang berjalan di tawaran sekarang. Ketahuan: lelang batal, denda, heat melonjak.",
-    baseRisk: 0.3,
-  },
+  BRIBE_GUARD: { id: "BRIBE_GUARD", baseRisk: 0.2 },
+  LOBBY: { id: "LOBBY", baseRisk: 0.25 },
+  EVADE: { id: "EVADE", baseRisk: 0.3 },
+  RIG_AUCTION: { id: "RIG_AUCTION", baseRisk: 0.3 },
 };
 
 export const BRIBE_GUARD_COST = 80;
@@ -75,11 +54,12 @@ export function rigAuctionCost(currentBid: number): number {
   return Math.max(60, Math.round(currentBid * 0.3));
 }
 
-export function heatLabel(heat: number): { label: string; tone: "good" | "warn" | "bad" } {
-  if (heat < 25) return { label: "Bersih", tone: "good" };
-  if (heat < 55) return { label: "Diawasi", tone: "warn" };
-  if (heat < 80) return { label: "Buron Ringan", tone: "bad" };
-  return { label: "Sangat Dicari", tone: "bad" };
+// Returns an i18n key (gov.heat.*) plus tone; the label is resolved by the UI.
+export function heatLabel(heat: number): { key: string; tone: "good" | "warn" | "bad" } {
+  if (heat < 25) return { key: "gov.heat.clean", tone: "good" };
+  if (heat < 55) return { key: "gov.heat.watched", tone: "warn" };
+  if (heat < 80) return { key: "gov.heat.wanted", tone: "bad" };
+  return { key: "gov.heat.mostWanted", tone: "bad" };
 }
 
 // A property owner who is in jail can't manage their estate — rent collected

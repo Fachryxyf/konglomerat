@@ -7,6 +7,7 @@ import {
   BookOpen, Dices, Home, Building2, Coins, HandCoins, Lock, Landmark,
   Scale, ShieldAlert, TrendingUp, Skull, Sparkles, MousePointerClick, X,
 } from "lucide-react";
+import { useT, useLocale } from "@/lib/i18n";
 
 interface Props {
   onClose: () => void;
@@ -50,7 +51,8 @@ function KV({ rows }: { rows: [string, string][] }) {
 }
 
 // ---------- chapters ----------
-const CHAPTERS: { id: string; title: string; icon: ReactNode; body: ReactNode }[] = [
+type Chapter = { id: string; title: string; icon: ReactNode; body: ReactNode };
+const CHAPTERS_ID: Chapter[] = [
   {
     id: "dasar", title: "Dasar Permainan", icon: <Dices className="w-4 h-4" />,
     body: (
@@ -292,8 +294,253 @@ const CHAPTERS: { id: string; title: string; icon: ReactNode; body: ReactNode }[
   },
 ];
 
+const CHAPTERS_EN: Chapter[] = [
+  {
+    id: "dasar", title: "Game Basics", icon: <Dices className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Your goal is simple: be the last player left standing. Wealth comes from buying properties, turning them into monopolies, then charging the highest rent you can.</P>
+        <H>Turn flow</H>
+        <UL>
+          <li>Roll two dice; your token advances that many spaces.</li>
+          <li>Resolve the space you land on (buy, pay rent, draw a card, pay tax, etc.).</li>
+          <li>Optionally manage assets (build, mortgage, trade, bank, government), then end your turn.</li>
+        </UL>
+        <H>Doubles</H>
+        <UL>
+          <li>Roll doubles → you go again after resolving the space.</li>
+          <li>Doubles <strong>three times in a row</strong> → straight to jail.</li>
+        </UL>
+        <H>Passing GO</H>
+        <P>Each time you pass or land on <strong>GO</strong> you collect <strong>$200</strong>.</P>
+        <Tip>Press <strong>Space</strong> to roll the dice, or to dismiss the top open modal/notification.</Tip>
+      </>
+    ),
+  },
+  {
+    id: "properti", title: "Property & Auctions", icon: <Home className="w-4 h-4" />,
+    body: (
+      <>
+        <H>Buying</H>
+        <P>Land on an unowned, purchasable space → you may buy it at the listed price, or decline.</P>
+        <H>Auctions</H>
+        <UL>
+          <li>If you <strong>decline</strong> to buy, the property is auctioned to all players.</li>
+          <li>You can also <strong>auction your own property</strong> from the manage menu to raise cash fast.</li>
+        </UL>
+        <H>Monopoly (color set)</H>
+        <P>Owning <strong>all</strong> tiles of one color = a monopoly. Even without building, base rent on that set doubles to <strong>2×</strong>. A monopoly is also required to build houses.</P>
+        <Tip>Click any tile/property on the board to see its detail card (rent per level, price, mortgage).</Tip>
+      </>
+    ),
+  },
+  {
+    id: "bangun", title: "Houses & Hotels", icon: <Building2 className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Once you hold a monopoly, you can build to multiply rent.</P>
+        <H>Rules</H>
+        <UL>
+          <li>Price per house/hotel = that property's <em>housePrice</em> value.</li>
+          <li><strong>Build evenly</strong>: house counts across the set may differ by at most 1.</li>
+          <li>4 houses → can be upgraded to <strong>1 hotel</strong>.</li>
+          <li>Sell buildings anytime for <strong>half</strong> the purchase price.</li>
+          <li>The bank's supply is limited: <strong>32 houses</strong> &amp; <strong>12 hotels</strong>.</li>
+        </UL>
+        <Warn>While you're <strong>in jail</strong>, you can't build.</Warn>
+      </>
+    ),
+  },
+  {
+    id: "sewa", title: "Rent", icon: <Coins className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Landing on another player's property means paying rent to its owner.</P>
+        <H>Color properties</H>
+        <UL>
+          <li>Rent scales up: base → 1/2/3/4 houses → hotel.</li>
+          <li>Base rent is <strong>2×</strong> if the owner holds the monopoly (with no houses).</li>
+        </UL>
+        <H>Railroads (stations)</H>
+        <P>Rent depends on how many stations the owner holds: the more they own, the pricier it gets.</P>
+        <H>Utilities (power/water)</H>
+        <P>Rent = the dice roll × a multiplier (1 utility = smaller, 2 utilities = much larger).</P>
+        <Warn>An owner who is <strong>in jail</strong> collects only <strong>half</strong> rent — their estate goes unmanaged.</Warn>
+      </>
+    ),
+  },
+  {
+    id: "gadai", title: "Mortgage", icon: <Lock className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Need cash fast? Mortgage a property to the bank.</P>
+        <UL>
+          <li>Mortgaging pays <strong>50%</strong> of the property price; mortgaged property earns no rent.</li>
+          <li>Unmortgaging costs the mortgage value <strong>+ 10%</strong> interest.</li>
+          <li>No buildings may remain in the set when you mortgage.</li>
+        </UL>
+        <Tip>You can also <strong>sell a property to the bank</strong> (50% of value) from the manage menu, not just mortgage it.</Tip>
+      </>
+    ),
+  },
+  {
+    id: "penjara", title: "Jail", icon: <ShieldAlert className="w-4 h-4" />,
+    body: (
+      <>
+        <H>How you get in</H>
+        <UL>
+          <li>Landing on the "Go To Jail" tile.</li>
+          <li>Drawing a card that sends you to jail.</li>
+          <li>Rolling doubles three times in a row.</li>
+          <li>Getting caught committing a serious crime (high heat).</li>
+        </UL>
+        <H>How you get out</H>
+        <UL>
+          <li>Pay <strong>bail</strong>, use a Get Out of Jail Free card, or roll doubles.</li>
+          <li>Fail doubles 3× → you must pay bail.</li>
+        </UL>
+        <H>Jail is EXPENSIVE now</H>
+        <KV rows={[
+          ["Bail", "max( $50 + $70×(times jailed−1), 8% of net worth )"],
+          ["Incoming rent", "cut 50% while you're locked up"],
+          ["Activities", "build / trade / lobby are frozen"],
+          ["Criminal record", "heat +25 on release"],
+        ]} />
+        <Warn>Repeat offenders &amp; wealthy players pay bail far above the old $50.</Warn>
+      </>
+    ),
+  },
+  {
+    id: "kartu", title: "Taxes & Cards", icon: <Sparkles className="w-4 h-4" />,
+    body: (
+      <>
+        <H>Taxes</H>
+        <UL>
+          <li><strong>Income Tax</strong>: pay $200 or 10% of net worth — whichever is lower.</li>
+          <li><strong>Luxury Tax</strong>: pay a fixed amount to the bank.</li>
+        </UL>
+        <H>Chance &amp; Community Chest</H>
+        <P>Draw a card and follow its instruction: collect/pay money, move tiles, go to/leave jail, per-house repairs, and more. Cards animate up from the board.</P>
+        <Tip>Browse every card anytime via the <strong>Cards</strong> button in the header.</Tip>
+      </>
+    ),
+  },
+  {
+    id: "trade", title: "Trade", icon: <HandCoins className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Swap properties, cash, and Get Out of Jail Free cards with other players (human or AI).</P>
+        <UL>
+          <li>Top column = what <strong>you give</strong> (you pay). Bottom column = what <strong>you receive</strong>.</li>
+          <li>No upper limit on requested cash — a property-rich, cash-poor player can still deal.</li>
+          <li>AI judges offers by value &amp; monopoly synergy; AIs can also trade among themselves.</li>
+        </UL>
+        <Warn>A player who is <strong>in jail</strong> can't propose a trade.</Warn>
+      </>
+    ),
+  },
+  {
+    id: "bank", title: "Bank & Loans", icon: <Landmark className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Open the <strong>Bank</strong> menu in the header to borrow from the central bank.</P>
+        <KV rows={[
+          ["Loan interest", "base rate + 2% margin / round"],
+          ["Term", "3, 5, or 8 rounds"],
+          ["Credit limit", "60% of net worth − outstanding debt"],
+          ["Installments", "auto-charged at the end of each of your turns"],
+        ]} />
+        <UL>
+          <li>Interest is <strong>floating</strong>: it tracks the prevailing base rate, so central-bank policy affects running loans.</li>
+          <li>You can <strong>repay early</strong> anytime on your turn.</li>
+          <li>Default → forced liquidation → possible bankruptcy.</li>
+        </UL>
+        <Tip>AI uses the bank too: borrowing when cash-thin but asset-rich, repaying when flush.</Tip>
+      </>
+    ),
+  },
+  {
+    id: "ekonomi", title: "Economy & Fiscal Year", icon: <TrendingUp className="w-4 h-4" />,
+    body: (
+      <>
+        <P>Every <strong>12 rounds</strong> an economic cycle shakes up the whole game.</P>
+        <H>Autonomous monetary policy</H>
+        <P>The central bank &amp; government (NPCs) pick an economic climate — Expansion, Recession, Inflation, Austerity, or Normalization — then re-tune:</P>
+        <UL>
+          <li>The <strong>base interest rate</strong> (affects all loans).</li>
+          <li><strong>Rent regulation</strong> (rent control ↓ or deregulation ↑).</li>
+          <li>The <strong>per-round property tax</strong>.</li>
+        </UL>
+        <H>Fiscal Year</H>
+        <P>It alternates between <strong>Tax Reform</strong> (a progressive wealth tax — comply or evade/gamble) and <strong>Inflation</strong> (hold cash vs. buy assets). Humans choose via a modal; AI decides automatically.</P>
+        <P>After round 10, each round also has a chance to spring a tiered <strong>random event</strong>: Regular, Special, Rare, up to Mythos.</P>
+      </>
+    ),
+  },
+  {
+    id: "pemerintah", title: "Government & Cheats", icon: <Scale className="w-4 h-4" />,
+    body: (
+      <>
+        <P>The <strong>Government</strong> menu holds the "back channels". Each action has a catch chance that rises with your <strong>suspicion (heat)</strong>.</P>
+        <KV rows={[
+          ["Catch chance", "base risk + (heat/100 × 55%)"],
+          ["Heat per crime", "+12 (more if caught)"],
+          ["Heat decay", "−6 / round when lying low"],
+        ]} />
+        <H>Actions</H>
+        <UL>
+          <li><strong>Bribe the Guard</strong> ($80): leave jail instantly. If caught: bribe lost + $200 fine, still jailed.</li>
+          <li><strong>Lobby Regulators</strong> ($150): skip property tax + your rents +10% until the next cycle. If caught: scandal &amp; $250 fine.</li>
+          <li><strong>Cook the Books</strong>: the next rent you pay drops to 40%. If audited: pay in full + a 1.5× penalty on the gap (jail if heat is high).</li>
+          <li><strong>Rig the Auction</strong>: win the running auction at the current bid. If caught: auction cancelled + $180 fine.</li>
+        </UL>
+        <Warn>The more often &amp; "sloppier" you play, the higher your heat — and the bigger the risk of charges + fines.</Warn>
+      </>
+    ),
+  },
+  {
+    id: "bangkrut", title: "Bankruptcy & Investors", icon: <Skull className="w-4 h-4" />,
+    body: (
+      <>
+        <P>If your debt exceeds what you can pay, you auto-liquidate (sell buildings per set, then mortgage). Still short → bankruptcy.</P>
+        <H>Investor rescue</H>
+        <P>Right at the brink of bankruptcy, another player can offer to <strong>rescue you</strong>:</P>
+        <UL>
+          <li>The investor pays off your debt.</li>
+          <li>In return, the investor takes <strong>50% of your rent income</strong> until they recoup <strong>1.5×</strong> their capital.</li>
+          <li>During the pact: you pay only base land rent on the investor's properties, and they pay nothing on yours.</li>
+          <li>You can still win — the pact ends as soon as the investor's capital is recouped.</li>
+        </UL>
+      </>
+    ),
+  },
+  {
+    id: "kontrol", title: "Controls & Tips", icon: <MousePointerClick className="w-4 h-4" />,
+    body: (
+      <>
+        <H>Controls</H>
+        <UL>
+          <li><strong>Space</strong>: roll the dice, or close the top modal/notification.</li>
+          <li><strong>Click a tile</strong>: see its property detail card.</li>
+          <li><strong>Click your property</strong>: open the manage menu (build, mortgage, trade, sell/auction).</li>
+          <li>Header: <strong>Properties</strong>, <strong>Cards</strong>, <strong>Bank</strong>, <strong>Government</strong>, <strong>Reset</strong>.</li>
+        </UL>
+        <H>Tips to win</H>
+        <UL>
+          <li>Chase high-ROI color monopolies (Orange/Red get landed on often).</li>
+          <li>Keep cash on hand for rent &amp; installments — don't over-leverage.</li>
+          <li>Watch interest rates before borrowing; don't pile on heat while you're being watched.</li>
+        </UL>
+      </>
+    ),
+  },
+];
+
 export default function GuideModal({ onClose }: Props) {
-  const [active, setActive] = useState(CHAPTERS[0].id);
+  const t = useT();
+  const locale = useLocale((s) => s.locale);
+  const CHAPTERS = locale === "en" ? CHAPTERS_EN : CHAPTERS_ID;
+  const [active, setActive] = useState(CHAPTERS_ID[0].id);
   const chapter = CHAPTERS.find((c) => c.id === active) ?? CHAPTERS[0];
 
   return (
@@ -302,7 +549,7 @@ export default function GuideModal({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <BookOpen className="w-5 h-5 text-emerald-600" />
-          <div className="font-bold">Buku Panduan</div>
+          <div className="font-bold">{t("ui.guide.title")}</div>
           <button onClick={onClose} className="ml-auto text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
             <X className="w-5 h-5" />
           </button>
@@ -338,7 +585,7 @@ export default function GuideModal({ onClose }: Props) {
         </div>
 
         <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
-          <Button variant="outline" className="w-full h-8 text-xs" onClick={onClose}>Tutup panduan</Button>
+          <Button variant="outline" className="w-full h-8 text-xs" onClick={onClose}>{t("ui.guide.close")}</Button>
         </div>
       </DialogContent>
     </Dialog>

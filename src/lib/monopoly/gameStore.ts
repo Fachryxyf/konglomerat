@@ -51,10 +51,18 @@ import type {
   GameState,
   Loan,
   LogEntry,
+  LogMsg,
   Player,
   PlayerType,
   TurnPhase,
 } from "./types";
+import { useLocale, translate } from "@/lib/i18n";
+
+// Snapshot translator for transient, non-persisted text (event/policy banners,
+// last-roll summary) — rendered once in the locale active at the time. The log
+// itself stores keys+params (see addLog) and re-renders live on locale change.
+const tr = (key: string, params?: LogMsg["params"]) =>
+  translate(useLocale.getState().locale, key, params as Record<string, string | number | { tKey: string }> | undefined);
 import {
   activePlayerCount,
   calculateRent,
@@ -142,7 +150,7 @@ interface GameStore extends GameState {
   clearEvent: () => void;
   resolveFiscalChoice: (choiceId: string) => void;
   resolveRescue: (invest: boolean) => void;
-  addLog: (message: string, kind?: LogEntry["kind"], playerId?: number | null) => void;
+  addLog: (key: string, params?: LogMsg["params"], kind?: LogEntry["kind"], playerId?: number | null) => void;
   // Validated entry point: parse (schema) → validate (rules) → apply → check
   // invariants. The single gateway an authoritative server will mirror. `actorId`
   // defaults to the current player; never trust an actor from the payload.
@@ -254,11 +262,11 @@ export const useGame = create<GameStore>()(
   ...makeInitialState(),
   pendingTrade: null,
 
-  addLog: (message, kind = "SYSTEM", playerId = null) => {
+  addLog: (key, params, kind = "SYSTEM", playerId = null) => {
     set((s) => ({
       log: [
         ...s.log,
-        { id: logIdCounter++, turn: s.turn, playerId, message, kind },
+        { id: logIdCounter++, turn: s.turn, playerId, msg: { key, params }, kind },
       ].slice(-200),
     }));
   },
@@ -310,8 +318,8 @@ export const useGame = create<GameStore>()(
       currentPlayerIndex: 0,
       turnPhase: "WAITING_ROLL",
     });
-    get().addLog(`Game dimulai dengan ${players.length} pemain (modal awal $${startingCash.toLocaleString()}).`, "SYSTEM");
-    get().addLog(`Giliran ${players[0].name}. Lempar dadu untuk mulai.`, "SYSTEM", 0);
+    get().addLog("log.game.start", { count: players.length, cash: startingCash.toLocaleString() }, "SYSTEM");
+    get().addLog("log.turn.startRoll", { name: players[0].name }, "SYSTEM", 0);
   },
 
   reset: () => {
@@ -332,10 +340,11 @@ export const useGame = create<GameStore>()(
     set({
       lastDiceRoll: { die1: roll.die1, die2: roll.die2, isDoubles: roll.isDoubles },
       turnPhase: "ROLLING_DICE",
-      lastRollSummary: `${player.name} melempar ${roll.die1} + ${roll.die2} = ${roll.total}`,
+      lastRollSummary: tr("log.roll.summary", { name: player.name, d1: roll.die1, d2: roll.die2, total: roll.total }),
     });
     get().addLog(
-      `${player.name} melempar dadu: ${roll.die1} + ${roll.die2} = ${roll.total}${roll.isDoubles ? " (KEMBAR!)" : ""}`,
+      "log.roll.dice",
+      { name: player.name, d1: roll.die1, d2: roll.die2, total: roll.total, doubles: roll.isDoubles ? { tKey: "log.roll.doublesSuffix" } : "" },
       "ROLL",
       player.id,
     );
@@ -343,7 +352,7 @@ export const useGame = create<GameStore>()(
     // Handle jail roll
     if (player.inJail) {
       if (roll.isDoubles) {
-        get().addLog(`${player.name} keluar dari penjara dengan dadu kembar!`, "JAIL", player.id);
+        get().addLog("log.jail.outDoubles", { name: player.name }, "JAIL", player.id);
         set((st) => ({
           players: st.players.map((p, i) =>
             i === st.currentPlayerIndex ? { ...p, inJail: false, jailTurns: 0, heat: Math.min(MAX_HEAT, p.heat + HEAT_ON_RELEASE) } : p,
@@ -359,7 +368,8 @@ export const useGame = create<GameStore>()(
           // Forced to post bail (scales with repeat offences + wealth).
           const bail = jailBail(player.jailCount, getNetWorthPublic(get(), player.id));
           get().addLog(
-            `${player.name} gagal lempar kembar 3x. Wajib bayar jaminan $${bail} untuk keluar.`,
+            "log.jail.forcedBail",
+            { name: player.name, bail },
             "JAIL",
             player.id,
           );
@@ -384,7 +394,8 @@ export const useGame = create<GameStore>()(
           return;
         } else {
           get().addLog(
-            `${player.name} tidak dapat kembar (percobaan ${newJailTurns}/3). Tetap di penjara.`,
+            "log.jail.stay",
+            { name: player.name, attempt: newJailTurns },
             "JAIL",
             player.id,
           );
@@ -405,7 +416,8 @@ export const useGame = create<GameStore>()(
       const newDoubles = s.doublesCount + 1;
       if (newDoubles >= 3) {
         get().addLog(
-          `${player.name} lempar kembar 3x berturut-turut! LANGSUNG KE PENJARA!`,
+          "log.jail.tripleDoubles",
+          { name: player.name },
           "JAIL",
           player.id,
         );
@@ -471,7 +483,7 @@ export const useGame = create<GameStore>()(
         ),
       }));
       if (crossedGo) {
-        get().addLog(`${curPlayer.name} melewati GO, kumpulkan $200.`, "MOVE", curPlayer.id);
+        get().addLog("log.move.passGo", { name: curPlayer.name }, "MOVE", curPlayer.id);
       }
       stepCount++;
       if (stepCount < totalSteps) {
@@ -482,7 +494,8 @@ export const useGame = create<GameStore>()(
         const finalPlayer = finalState.players[finalState.currentPlayerIndex];
         const finalPos = finalPlayer.position;
         finalState.addLog(
-          `${finalPlayer.name} mendarat di ${getSpace(finalPos).name}.`,
+          "log.move.landed",
+          { name: finalPlayer.name, space: { tKey: `board.${finalPos}.name` } },
           "MOVE",
           finalPlayer.id,
         );
@@ -502,22 +515,22 @@ export const useGame = create<GameStore>()(
     const space = getSpace(spaceIndex);
 
     if (space.type === "GO") {
-      get().addLog(`${player.name} berada di GO.`, "ACTION", player.id);
+      get().addLog("log.land.go", { name: player.name }, "ACTION", player.id);
       get().proceedAfterAction(isDoubles);
       return;
     }
     if (space.type === "JAIL") {
-      get().addLog(`${player.name} hanya mampir di penjara.`, "ACTION", player.id);
+      get().addLog("log.land.visitingJail", { name: player.name }, "ACTION", player.id);
       get().proceedAfterAction(isDoubles);
       return;
     }
     if (space.type === "FREE_PARKING") {
-      get().addLog(`${player.name} berada di Free Parking. Tidak terjadi apa-apa.`, "ACTION", player.id);
+      get().addLog("log.land.freeParking", { name: player.name }, "ACTION", player.id);
       get().proceedAfterAction(isDoubles);
       return;
     }
     if (space.type === "GO_TO_JAIL") {
-      get().addLog(`${player.name} masuk penjara!`, "JAIL", player.id);
+      get().addLog("log.land.goToJail", { name: player.name }, "JAIL", player.id);
       set((st) => ({
         players: st.players.map((p, i) =>
           i === st.currentPlayerIndex
@@ -538,7 +551,7 @@ export const useGame = create<GameStore>()(
         return; // UI will handle the decision
       } else {
         // Luxury tax: $100
-        get().addLog(`${player.name} bayar Luxury Tax $100.`, "PAYMENT", player.id);
+        get().addLog("log.tax.luxury", { name: player.name }, "PAYMENT", player.id);
         set((st) => ({
           players: st.players.map((p, i) =>
             i === st.currentPlayerIndex ? { ...p, balance: p.balance - 100 } : p,
@@ -559,14 +572,15 @@ export const useGame = create<GameStore>()(
         set({ pendingSpaceAction: spaceIndex, turnPhase: "ACTION" });
         return;
       } else if (ownership.ownerId === player.id) {
-        get().addLog(`${player.name} mendarat di properti sendiri.`, "ACTION", player.id);
+        get().addLog("log.land.ownProperty", { name: player.name }, "ACTION", player.id);
         get().proceedAfterAction(isDoubles);
         return;
       } else {
         // Pay rent
         if (ownership.mortgaged) {
           get().addLog(
-            `${player.name} mendarat di ${space.name} yang digadaikan. Tidak bayar sewa.`,
+            "log.land.mortgaged",
+            { name: player.name, space: { tKey: `board.${spaceIndex}.name` } },
             "ACTION",
             player.id,
           );
@@ -589,7 +603,7 @@ export const useGame = create<GameStore>()(
         // Apply investor-pact rent rules (free for investor, base rent for vassal).
         const adj = pactAdjustRent(s, player.id, owner.id, rent, spaceIndex);
         rent = adj.rent;
-        if (adj.note) get().addLog(adj.note, "ACTION", player.id);
+        if (adj.note) get().addLog(adj.note.key, adj.note.params, "ACTION", player.id);
         // Government rent regulation (rent control / deregulation).
         rent = applyRentRegulation(s, rent);
         // Owner-side: lobby perk / jailed-owner penalty.
@@ -597,7 +611,8 @@ export const useGame = create<GameStore>()(
         // Payer-side: book-cooking evasion (may audit + fine + jail).
         rent = applyEvasion(get, set, player.id, rent);
         get().addLog(
-          `${player.name} bayar sewa $${rent} ke ${owner.name} untuk ${space.name}.`,
+          "log.rent.pay",
+          { name: player.name, rent, owner: owner.name, space: { tKey: `board.${spaceIndex}.name` } },
           "PAYMENT",
           player.id,
         );
@@ -641,7 +656,7 @@ export const useGame = create<GameStore>()(
     } else {
       set({ communityChestDeck: rest, communityChestDiscard: discard });
     }
-    get().addLog(`${player.name} mengambil kartu ${deckType === "CHANCE" ? "Chance" : "Community Chest"}: "${card.instruction}"`, "CARD", player.id);
+    get().addLog("log.card.draw", { name: player.name, deck: { tKey: `card.deck.${deckType}` }, instruction: { tKey: `card.${card.deck}.${card.id}` } }, "CARD", player.id);
     set({ pendingCard: card, turnPhase: "CARD_DRAW" });
   },
 
@@ -706,7 +721,7 @@ export const useGame = create<GameStore>()(
         ),
       }));
       if (crossedGo) {
-        get().addLog(`${curPlayer.name} melewati GO, kumpulkan $200.`, "MOVE", curPlayer.id);
+        get().addLog("log.move.passGo", { name: curPlayer.name }, "MOVE", curPlayer.id);
       }
       stepCount++;
       if (stepCount < steps) {
@@ -731,7 +746,8 @@ export const useGame = create<GameStore>()(
         const target = card.targetPosition ?? 0;
         const collectGo = card.collectGo ?? false;
         get().addLog(
-          `${player.name} bergerak ke ${getSpace(target).name}.`,
+          "log.move.toSpace",
+          { name: player.name, space: { tKey: `board.${target}.name` } },
           "MOVE",
           player.id,
         );
@@ -746,7 +762,7 @@ export const useGame = create<GameStore>()(
         const target = nearestSpaceIndex(player.position, card.targetType!);
         const collectGo = card.collectGo ?? false;
         const multiplier = card.rentMultiplier ?? 1;
-        get().addLog(`${player.name} bergerak ke ${getSpace(target).name}.`, "MOVE", player.id);
+        get().addLog("log.move.toSpace", { name: player.name, space: { tKey: `board.${target}.name` } }, "MOVE", player.id);
         get().executeAnimatedMoveTo(target, collectGo, () => {
           set({ turnPhase: "ACTION" });
           setTimeout(() => get().handleSpaceLandingWithMultiplier(target, multiplier), 200);
@@ -780,7 +796,8 @@ export const useGame = create<GameStore>()(
             const finalState = get();
             const finalPos = finalState.players[finalState.currentPlayerIndex].position;
             finalState.addLog(
-              `${curPlayer.name} mendarat di ${getSpace(finalPos).name}.`,
+              "log.move.landed",
+              { name: curPlayer.name, space: { tKey: `board.${finalPos}.name` } },
               "MOVE",
               curPlayer.id,
             );
@@ -792,7 +809,7 @@ export const useGame = create<GameStore>()(
           set({ turnPhase: "ACTION" });
           setTimeout(() => get().handleSpaceLanding(player.position, false), 100);
         } else {
-          get().addLog(`${player.name} bergerak ${steps} kotak.`, "MOVE", player.id);
+          get().addLog("log.move.spaces", { name: player.name, steps }, "MOVE", player.id);
           setTimeout(stepOnce, STEP_DELAY);
         }
         needToProceed = false;
@@ -805,7 +822,7 @@ export const useGame = create<GameStore>()(
             i === st.currentPlayerIndex ? { ...p, balance: p.balance + amount } : p,
           ),
         }));
-        get().addLog(`${player.name} menerima $${amount} dari bank.`, "PAYMENT", player.id);
+        get().addLog("log.bank.receive", { name: player.name, amount }, "PAYMENT", player.id);
         break;
       }
       case "PAY": {
@@ -815,7 +832,7 @@ export const useGame = create<GameStore>()(
             i === st.currentPlayerIndex ? { ...p, balance: p.balance - amount } : p,
           ),
         }));
-        get().addLog(`${player.name} bayar $${amount} ke bank.`, "PAYMENT", player.id);
+        get().addLog("log.bank.pay", { name: player.name, amount }, "PAYMENT", player.id);
         break;
       }
       case "COLLECT_FROM_EACH": {
@@ -833,7 +850,7 @@ export const useGame = create<GameStore>()(
             return { ...p, balance: Math.max(0, p.balance - amount) };
           }),
         }));
-        get().addLog(`${player.name} mengumpulkan $${amount} dari setiap pemain (total $${collected}).`, "PAYMENT", player.id);
+        get().addLog("log.collectEach", { name: player.name, amount, total: collected }, "PAYMENT", player.id);
         break;
       }
       case "PAY_EACH": {
@@ -846,7 +863,7 @@ export const useGame = create<GameStore>()(
             return { ...p, balance: p.balance + amount };
           }),
         }));
-        get().addLog(`${player.name} bayar $${amount} ke setiap pemain (total $${totalPay}).`, "PAYMENT", player.id);
+        get().addLog("log.payEach", { name: player.name, amount, total: totalPay }, "PAYMENT", player.id);
         break;
       }
       case "REPAIRS": {
@@ -857,7 +874,7 @@ export const useGame = create<GameStore>()(
             i === st.currentPlayerIndex ? { ...p, balance: p.balance - cost } : p,
           ),
         }));
-        get().addLog(`${player.name} bayar biaya perbaikan: ${houses} rumah × $${card.perHouse} + ${hotels} hotel × $${card.perHotel} = $${cost}.`, "PAYMENT", player.id);
+        get().addLog("log.repairs", { name: player.name, houses, perHouse: card.perHouse ?? 0, hotels, perHotel: card.perHotel ?? 0, cost }, "PAYMENT", player.id);
         break;
       }
       case "GO_TO_JAIL": {
@@ -870,7 +887,7 @@ export const useGame = create<GameStore>()(
           doublesCount: 0,
           turnPhase: "POST_ACTION",
         }));
-        get().addLog(`${player.name} masuk penjara (kartu).`, "JAIL", player.id);
+        get().addLog("log.jail.fromCard", { name: player.name }, "JAIL", player.id);
         setTimeout(() => get().endTurn(), 600);
         needToProceed = false;
         break;
@@ -881,7 +898,7 @@ export const useGame = create<GameStore>()(
             i === st.currentPlayerIndex ? { ...p, getOutOfJailCards: p.getOutOfJailCards + 1 } : p,
           ),
         }));
-        get().addLog(`${player.name} menyimpan kartu Get Out of Jail Free.`, "CARD", player.id);
+        get().addLog("log.card.goojKeep", { name: player.name }, "CARD", player.id);
         break;
       }
     }
@@ -909,12 +926,12 @@ export const useGame = create<GameStore>()(
       return;
     }
     if (ownership.ownerId === player.id) {
-      get().addLog(`${player.name} mendarat di properti sendiri.`, "ACTION", player.id);
+      get().addLog("log.land.ownProperty", { name: player.name }, "ACTION", player.id);
       get().proceedAfterAction(false);
       return;
     }
     if (ownership.mortgaged) {
-      get().addLog(`${player.name} mendarat di ${space.name} yang digadaikan. Tidak bayar sewa.`, "ACTION", player.id);
+      get().addLog("log.land.mortgaged", { name: player.name, space: { tKey: `board.${spaceIndex}.name` } }, "ACTION", player.id);
       get().proceedAfterAction(false);
       return;
     }
@@ -936,12 +953,13 @@ export const useGame = create<GameStore>()(
     }
     const adjM = pactAdjustRent(s, player.id, owner.id, rent, spaceIndex);
     rent = adjM.rent;
-    if (adjM.note) get().addLog(adjM.note, "ACTION", player.id);
+    if (adjM.note) get().addLog(adjM.note.key, adjM.note.params, "ACTION", player.id);
     rent = applyRentRegulation(s, rent);
     rent = applyOwnerRentMods(get(), owner.id, rent);
     rent = applyEvasion(get, set, player.id, rent);
     get().addLog(
-      `${player.name} bayar sewa $${rent} ke ${owner.name} untuk ${space.name} (multiplier ${multiplier}x).`,
+      "log.rent.payMult",
+      { name: player.name, rent, owner: owner.name, space: { tKey: `board.${spaceIndex}.name` }, mult: multiplier },
       "PAYMENT",
       player.id,
     );
@@ -969,12 +987,12 @@ export const useGame = create<GameStore>()(
     const winner = findWinner(s);
     if (winner !== null) {
       set({ winnerId: winner, turnPhase: "GAME_OVER" });
-      get().addLog(`${s.players[winner].name} MEMENANGKAN PERMAINAN!`, "SYSTEM");
+      get().addLog("log.game.win", { name: s.players[winner].name }, "SYSTEM");
       return;
     }
     if (isDoubles) {
       set({ turnPhase: "WAITING_ROLL" });
-      get().addLog(`${s.players[s.currentPlayerIndex].name} dapat giliran lagi karena kembar.`, "SYSTEM", s.currentPlayerIndex);
+      get().addLog("log.turn.again", { name: s.players[s.currentPlayerIndex].name }, "SYSTEM", s.currentPlayerIndex);
     } else {
       set({ turnPhase: "POST_ACTION" });
       setTimeout(() => get().endTurn(), 400);
@@ -989,7 +1007,7 @@ export const useGame = create<GameStore>()(
     const player = s.players[s.currentPlayerIndex];
     const price = getPrice(space);
     if (player.balance < price) {
-      get().addLog(`${player.name} tidak punya cukup uang untuk membeli ${space.name}.`, "SYSTEM", player.id);
+      get().addLog("log.buy.insufficient", { name: player.name, space: { tKey: `board.${spaceIndex}.name` } }, "SYSTEM", player.id);
       return;
     }
     set((st) => ({
@@ -1004,7 +1022,7 @@ export const useGame = create<GameStore>()(
       },
       pendingSpaceAction: null,
     }));
-    get().addLog(`${player.name} membeli ${space.name} seharga $${price}.`, "ACTION", player.id);
+    get().addLog("log.buy.bought", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, price }, "ACTION", player.id);
     get().proceedAfterAction(get().lastDiceRoll.isDoubles);
   },
 
@@ -1019,7 +1037,7 @@ export const useGame = create<GameStore>()(
       auction: { ...EMPTY_AUCTION, isActive: true, propertyIndex: spaceIndex, participants },
       turnPhase: "AUCTION",
     });
-    get().addLog(`Lelang dimulai untuk ${getSpace(spaceIndex).name}.`, "AUCTION");
+    get().addLog("log.auction.start", { space: { tKey: `board.${spaceIndex}.name` } }, "AUCTION");
   },
 
   // Owner puts one of their own building-free properties up for auction to raise
@@ -1037,21 +1055,21 @@ export const useGame = create<GameStore>()(
       for (const i of setIdx) {
         const b = s.buildings[i];
         if (b && (b.houses > 0 || b.hotel)) {
-          get().addLog(`Tidak bisa melelang ${space.name} — masih ada bangunan di color set.`, "SYSTEM");
+          get().addLog("log.auction.cantBuildings", { space: { tKey: `board.${spaceIndex}.name` } }, "SYSTEM");
           return;
         }
       }
     }
     const participants = s.players.filter((p) => !p.bankrupt && p.id !== owner.id).map((p) => p.id);
     if (participants.length === 0) {
-      get().addLog(`Tidak ada pemain lain untuk ikut lelang.`, "SYSTEM");
+      get().addLog("log.auction.noOthers", undefined, "SYSTEM");
       return;
     }
     set({
       auction: { ...EMPTY_AUCTION, isActive: true, propertyIndex: spaceIndex, participants, sellerId: owner.id, resumePhase: s.turnPhase },
       turnPhase: "AUCTION",
     });
-    get().addLog(`${owner.name} melelang propertinya: ${space.name}.`, "AUCTION", owner.id);
+    get().addLog("log.auction.ownerSells", { name: owner.name, space: { tKey: `board.${spaceIndex}.name` } }, "AUCTION", owner.id);
   },
 
   auctionBid: (playerId, amount) => {
@@ -1063,7 +1081,7 @@ export const useGame = create<GameStore>()(
 
     // If only 1 participant, they win immediately with this bid
     if (s.auction.participants.length === 1) {
-      get().addLog(`${player.name} menawar $${amount}.`, "AUCTION", playerId);
+      get().addLog("log.auction.bid", { name: player.name, amount }, "AUCTION", playerId);
       resolveAuctionWin(get, set, playerId, amount, s.auction.propertyIndex!);
       return;
     }
@@ -1076,7 +1094,7 @@ export const useGame = create<GameStore>()(
         turnIndex: (s.auction.turnIndex + 1) % s.auction.participants.length,
       },
     });
-    get().addLog(`${player.name} menawar $${amount}.`, "AUCTION", playerId);
+    get().addLog("log.auction.bid", { name: player.name, amount }, "AUCTION", playerId);
   },
 
   auctionPass: (playerId) => {
@@ -1104,7 +1122,7 @@ export const useGame = create<GameStore>()(
         turnIndex: newTurnIndex,
       },
     });
-    get().addLog(`${s.players[playerId].name} keluar dari lelang.`, "AUCTION", playerId);
+    get().addLog("log.auction.leave", { name: s.players[playerId].name }, "AUCTION", playerId);
     // If only one left and there's a bid, they win automatically
     if (remaining.length === 1 && s.auction.currentBid > 0) {
       resolveAuctionWin(get, set, remaining[0], s.auction.currentBid, s.auction.propertyIndex!);
@@ -1122,12 +1140,11 @@ export const useGame = create<GameStore>()(
     const spaceIndex = s.auction.propertyIndex!;
     const { sellerId, resumePhase } = s.auction;
     if (winnerId === null || bidAmount === 0) {
-      get().addLog(
-        sellerId !== null
-          ? `Lelang ${getSpace(spaceIndex).name} berakhir tanpa penawar — properti tetap milik ${s.players[sellerId].name}.`
-          : `Lelang ${getSpace(spaceIndex).name} berakhir tanpa pemenang. Properti kembali ke bank.`,
-        "AUCTION",
-      );
+      if (sellerId !== null) {
+        get().addLog("log.auction.endSeller", { space: { tKey: `board.${spaceIndex}.name` }, name: s.players[sellerId].name }, "AUCTION");
+      } else {
+        get().addLog("log.auction.endBank", { space: { tKey: `board.${spaceIndex}.name` } }, "AUCTION");
+      }
       set({ auction: EMPTY_AUCTION, turnPhase: resumePhase ?? "POST_ACTION" });
       if (resumePhase === null) setTimeout(() => get().proceedAfterAction(get().lastDiceRoll.isDoubles), 400);
       return;
@@ -1146,7 +1163,7 @@ export const useGame = create<GameStore>()(
     const winner = findWinner(s);
     if (winner !== null) {
       set({ winnerId: winner, turnPhase: "GAME_OVER" });
-      get().addLog(`${s.players[winner].name} MEMENANGKAN PERMAINAN!`, "SYSTEM");
+      get().addLog("log.game.win", { name: s.players[winner].name }, "SYSTEM");
       return;
     }
     const next = getNextActivePlayer(s);
@@ -1161,7 +1178,7 @@ export const useGame = create<GameStore>()(
       round: newRound,
       lastRollSummary: "",
     }));
-    get().addLog(`Giliran ${s.players[next].name}.`, "SYSTEM", next);
+    get().addLog("log.turn.start", { name: s.players[next].name }, "SYSTEM", next);
     // No events during the first 10 rounds. After that, each new round has a
     // chance to spring a random event.
     if (wrapped && newRound > 10 && rng() < WAVE_EVENT_CHANCE) {
@@ -1180,7 +1197,7 @@ export const useGame = create<GameStore>()(
     if (decision === "PAY") {
       const bail = jailBail(player.jailCount, getNetWorthPublic(get(), player.id));
       if (player.balance < bail) {
-        get().addLog(`${player.name} tidak punya $${bail} untuk jaminan. Harus coba lempar kembar.`, "JAIL", player.id);
+        get().addLog("log.jail.noBail", { name: player.name, bail }, "JAIL", player.id);
         return;
       }
       set((st) => ({
@@ -1189,7 +1206,7 @@ export const useGame = create<GameStore>()(
         ),
         turnPhase: "WAITING_ROLL",
       }));
-      get().addLog(`${player.name} bayar jaminan $${bail} untuk keluar penjara.`, "JAIL", player.id);
+      get().addLog("log.jail.payBail", { name: player.name, bail }, "JAIL", player.id);
     } else if (decision === "CARD") {
       if (player.getOutOfJailCards <= 0) return;
       set((st) => ({
@@ -1206,7 +1223,7 @@ export const useGame = create<GameStore>()(
         type: "GET_OUT_OF_JAIL",
       };
       set((st) => ({ chanceDiscard: [...st.chanceDiscard, card] }));
-      get().addLog(`${player.name} menggunakan kartu Get Out of Jail Free.`, "JAIL", player.id);
+      get().addLog("log.jail.useCard", { name: player.name }, "JAIL", player.id);
     } else if (decision === "ROLL") {
       // rollDice() blocks a jailed player unless the phase is JAIL_DECISION,
       // so set that (not WAITING_ROLL) before rolling to escape.
@@ -1218,7 +1235,7 @@ export const useGame = create<GameStore>()(
   buildHouse: (spaceIndex, count = 1) => {
     const s = get();
     const player = s.players[s.currentPlayerIndex];
-    if (player.inJail) { get().addLog(`${player.name} sedang dipenjara — tak bisa membangun.`, "SYSTEM", player.id); return; }
+    if (player.inJail) { get().addLog("log.build.inJail", { name: player.name }, "SYSTEM", player.id); return; }
     const space = getSpace(spaceIndex);
     if (space.type !== "PROPERTY") return;
     const ownership = s.ownership[spaceIndex];
@@ -1248,18 +1265,18 @@ export const useGame = create<GameStore>()(
       if (!canBuild) {
         // Can only build up to i-1
         if (i === 1) {
-          get().addLog(`Tidak bisa bangun: aturan merata color set.`, "SYSTEM");
+          get().addLog("log.build.evenRule", undefined, "SYSTEM");
           return;
         }
         // Build i-1 houses
         const actualCount = i - 1;
         const totalCost = prop.housePrice * actualCount;
         if (player.balance < totalCost) {
-          get().addLog(`Saldo tidak cukup untuk bangun ${actualCount} rumah.`, "SYSTEM");
+          get().addLog("log.build.insufficientHouses", { count: actualCount }, "SYSTEM");
           return;
         }
         if (s.bank.houses < actualCount) {
-          get().addLog(`Bank kehabisan rumah (butuh ${actualCount}, tersisa ${s.bank.houses}).`, "SYSTEM");
+          get().addLog("log.build.bankNoHouses", { need: actualCount, left: s.bank.houses }, "SYSTEM");
           return;
         }
         set((st) => ({
@@ -1272,18 +1289,18 @@ export const useGame = create<GameStore>()(
           },
           bank: { ...st.bank, houses: st.bank.houses - actualCount },
         }));
-        get().addLog(`${player.name} membangun ${actualCount} rumah di ${space.name} ($${totalCost}).`, "BUILD", player.id);
+        get().addLog("log.build.houses", { name: player.name, count: actualCount, space: { tKey: `board.${spaceIndex}.name` }, cost: totalCost }, "BUILD", player.id);
         return;
       }
     }
     // All `count` houses can be built
     const totalCost = prop.housePrice * maxCanBuild;
     if (player.balance < totalCost) {
-      get().addLog(`Saldo tidak cukup untuk bangun ${maxCanBuild} rumah (butuh $${totalCost}).`, "SYSTEM");
+      get().addLog("log.build.insufficientHousesCost", { count: maxCanBuild, cost: totalCost }, "SYSTEM");
       return;
     }
     if (s.bank.houses < maxCanBuild) {
-      get().addLog(`Bank kehabisan rumah (butuh ${maxCanBuild}, tersisa ${s.bank.houses}).`, "SYSTEM");
+      get().addLog("log.build.bankNoHouses", { need: maxCanBuild, left: s.bank.houses }, "SYSTEM");
       return;
     }
     set((st) => ({
@@ -1296,7 +1313,7 @@ export const useGame = create<GameStore>()(
       },
       bank: { ...st.bank, houses: st.bank.houses - maxCanBuild },
     }));
-    get().addLog(`${player.name} membangun ${maxCanBuild} rumah di ${space.name} ($${totalCost}).`, "BUILD", player.id);
+    get().addLog("log.build.houses", { name: player.name, count: maxCanBuild, space: { tKey: `board.${spaceIndex}.name` }, cost: totalCost }, "BUILD", player.id);
   },
 
   sellHouse: (spaceIndex, count = 1) => {
@@ -1317,7 +1334,7 @@ export const useGame = create<GameStore>()(
       if (idx === spaceIndex) continue;
       const otherB = s.buildings[idx] || { houses: 0, hotel: false };
       if (otherB.houses > currentBuildings.houses - actualCount) {
-        get().addLog(`Tidak bisa jual: aturan merata color set.`, "SYSTEM");
+        get().addLog("log.sell.evenRule", undefined, "SYSTEM");
         return;
       }
     }
@@ -1332,13 +1349,13 @@ export const useGame = create<GameStore>()(
       },
       bank: { ...st.bank, houses: st.bank.houses + actualCount },
     }));
-    get().addLog(`${player.name} menjual ${actualCount} rumah di ${space.name} (refund $${refund}).`, "BUILD", player.id);
+    get().addLog("log.sell.houses", { name: player.name, count: actualCount, space: { tKey: `board.${spaceIndex}.name` }, refund }, "BUILD", player.id);
   },
 
   buildHotel: (spaceIndex) => {
     const s = get();
     const player = s.players[s.currentPlayerIndex];
-    if (player.inJail) { get().addLog(`${player.name} sedang dipenjara — tak bisa membangun.`, "SYSTEM", player.id); return; }
+    if (player.inJail) { get().addLog("log.build.inJail", { name: player.name }, "SYSTEM", player.id); return; }
     const space = getSpace(spaceIndex);
     if (space.type !== "PROPERTY") return;
     const ownership = s.ownership[spaceIndex];
@@ -1346,16 +1363,16 @@ export const useGame = create<GameStore>()(
     // Read from buildings state
     const currentBuildings = s.buildings[spaceIndex] || { houses: 0, hotel: false };
     if (currentBuildings.houses !== 4 || currentBuildings.hotel) {
-      get().addLog(`Hotel hanya bisa dibangun di properti dengan 4 rumah.`, "SYSTEM");
+      get().addLog("log.build.hotelNeed4", undefined, "SYSTEM");
       return;
     }
     const prop = space as { housePrice: number };
     if (s.bank.hotels <= 0) {
-      get().addLog(`Bank kehabisan hotel.`, "SYSTEM");
+      get().addLog("log.build.bankNoHotels", undefined, "SYSTEM");
       return;
     }
     if (player.balance < prop.housePrice) {
-      get().addLog(`Saldo tidak cukup untuk bangun hotel ($${prop.housePrice}).`, "SYSTEM");
+      get().addLog("log.build.insufficientHotel", { cost: prop.housePrice }, "SYSTEM");
       return;
     }
     // Return 4 houses to bank, take 1 hotel
@@ -1369,7 +1386,7 @@ export const useGame = create<GameStore>()(
       },
       bank: { ...st.bank, houses: st.bank.houses + 4, hotels: st.bank.hotels - 1 },
     }));
-    get().addLog(`${player.name} membangun hotel di ${space.name} ($${prop.housePrice}).`, "BUILD", player.id);
+    get().addLog("log.build.hotel", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, cost: prop.housePrice }, "BUILD", player.id);
   },
 
   sellHotel: (spaceIndex) => {
@@ -1385,7 +1402,7 @@ export const useGame = create<GameStore>()(
     const refund = Math.floor(prop.housePrice / 2);
     // Need 4 houses back from bank
     if (s.bank.houses < 4) {
-      get().addLog(`Bank tidak punya cukup rumah untuk dijual kembali hotel.`, "SYSTEM");
+      get().addLog("log.sell.hotelBankNoHouses", undefined, "SYSTEM");
       return;
     }
     set((st) => ({
@@ -1398,7 +1415,7 @@ export const useGame = create<GameStore>()(
       },
       bank: { ...st.bank, houses: st.bank.houses - 4, hotels: st.bank.hotels + 1 },
     }));
-    get().addLog(`${player.name} menjual hotel di ${space.name} (refund $${refund}).`, "BUILD", player.id);
+    get().addLog("log.sell.hotel", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, refund }, "BUILD", player.id);
   },
 
   mortgageProperty: (spaceIndex) => {
@@ -1411,7 +1428,7 @@ export const useGame = create<GameStore>()(
     // Cannot mortgage if has buildings
     const buildings = s.buildings[spaceIndex];
     if (buildings && (buildings.houses > 0 || buildings.hotel)) {
-      get().addLog(`Tidak bisa menggadaikan ${space.name} - masih ada bangunan.`, "SYSTEM");
+      get().addLog("log.mortgage.cantBuildings", { space: { tKey: `board.${spaceIndex}.name` } }, "SYSTEM");
       return;
     }
     // If property is in a color set with buildings on other properties, also can't mortgage
@@ -1421,7 +1438,7 @@ export const useGame = create<GameStore>()(
       for (const idx of setIndices) {
         const b = s.buildings[idx];
         if (b && (b.houses > 0 || b.hotel)) {
-          get().addLog(`Tidak bisa menggadaikan - ada bangunan di color set.`, "SYSTEM");
+          get().addLog("log.mortgage.cantSetBuildings", undefined, "SYSTEM");
           return;
         }
       }
@@ -1436,7 +1453,7 @@ export const useGame = create<GameStore>()(
         [spaceIndex]: { ...st.ownership[spaceIndex], mortgaged: true },
       },
     }));
-    get().addLog(`${player.name} menggadaikan ${space.name} (terima $${value}).`, "PAYMENT", player.id);
+    get().addLog("log.mortgage.done", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, value }, "PAYMENT", player.id);
   },
 
   unmortgageProperty: (spaceIndex) => {
@@ -1458,7 +1475,7 @@ export const useGame = create<GameStore>()(
         [spaceIndex]: { ...st.ownership[spaceIndex], mortgaged: false },
       },
     }));
-    get().addLog(`${player.name} melunasi gadai ${space.name} (bayar $${cost}).`, "PAYMENT", player.id);
+    get().addLog("log.mortgage.redeem", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, cost }, "PAYMENT", player.id);
   },
 
   // Sell a building-free property back to the bank for its mortgage value (50%).
@@ -1472,7 +1489,7 @@ export const useGame = create<GameStore>()(
     // No buildings on the property or its color set.
     const buildings = s.buildings[spaceIndex];
     if (buildings && (buildings.houses > 0 || buildings.hotel)) {
-      get().addLog(`Tidak bisa menjual ${space.name} — masih ada bangunan.`, "SYSTEM");
+      get().addLog("log.sellbank.cantBuildings", { space: { tKey: `board.${spaceIndex}.name` } }, "SYSTEM");
       return;
     }
     if (space.type === "PROPERTY") {
@@ -1480,7 +1497,7 @@ export const useGame = create<GameStore>()(
       for (const i of setIdx) {
         const b = s.buildings[i];
         if (b && (b.houses > 0 || b.hotel)) {
-          get().addLog(`Tidak bisa menjual ${space.name} — ada bangunan di color set.`, "SYSTEM");
+          get().addLog("log.sellbank.cantSetBuildings", { space: { tKey: `board.${spaceIndex}.name` } }, "SYSTEM");
           return;
         }
       }
@@ -1495,7 +1512,7 @@ export const useGame = create<GameStore>()(
       ),
       ownership: { ...st.ownership, [spaceIndex]: { ownerId: null, mortgaged: false, houses: 0, hotel: false } },
     }));
-    get().addLog(`${player.name} menjual ${space.name} ke bank (terima $${value}).`, "PAYMENT", player.id);
+    get().addLog("log.sellbank.done", { name: player.name, space: { tKey: `board.${spaceIndex}.name` }, value }, "PAYMENT", player.id);
   },
 
   takeLoan: (playerId, amount, term) => {
@@ -1506,7 +1523,7 @@ export const useGame = create<GameStore>()(
     const limit = creditLimit(net, totalDebt(player.loans ?? []));
     const principal = Math.min(Math.max(0, Math.round(amount)), limit);
     if (principal < 50) {
-      get().addLog(`Pinjaman ditolak — plafon kredit ${player.name} hanya $${limit}.`, "SYSTEM", playerId);
+      get().addLog("log.loan.rejected", { name: player.name, limit }, "SYSTEM", playerId);
       return;
     }
     const loan = makeLoan(principal, term, s.turn);
@@ -1516,7 +1533,8 @@ export const useGame = create<GameStore>()(
       ),
     }));
     get().addLog(
-      `🏦 ${player.name} meminjam $${principal} dari bank (tenor ${term} ronde, bunga ${Math.round((s.centralRate + 0.02) * 100)}%/ronde).`,
+      "log.loan.taken",
+      { name: player.name, principal, term, rate: Math.round((s.centralRate + 0.02) * 100) },
       "PAYMENT",
       playerId,
     );
@@ -1530,7 +1548,7 @@ export const useGame = create<GameStore>()(
     if (!loan) return;
     const payoff = loan.balance + Math.ceil(loan.balance * (s.centralRate + 0.02));
     if (player.balance < payoff) {
-      get().addLog(`${player.name} tak punya $${payoff} untuk melunasi pinjaman.`, "SYSTEM", playerId);
+      get().addLog("log.loan.cantRepay", { name: player.name, payoff }, "SYSTEM", playerId);
       return;
     }
     set((st) => ({
@@ -1540,7 +1558,7 @@ export const useGame = create<GameStore>()(
           : p,
       ),
     }));
-    get().addLog(`🏦 ${player.name} melunasi pinjaman lebih awal ($${payoff}).`, "PAYMENT", playerId);
+    get().addLog("log.loan.repaidEarly", { name: player.name, payoff }, "PAYMENT", playerId);
   },
 
   bribeGuard: (playerId) => {
@@ -1548,7 +1566,7 @@ export const useGame = create<GameStore>()(
     const p = s.players[playerId];
     if (!p || p.bankrupt || !p.inJail) return;
     if (p.balance < BRIBE_GUARD_COST) {
-      get().addLog(`${p.name} tak punya $${BRIBE_GUARD_COST} untuk menyuap sipir.`, "SYSTEM", playerId);
+      get().addLog("log.crime.bribeNoCash", { name: p.name, cost: BRIBE_GUARD_COST }, "SYSTEM", playerId);
       return;
     }
     const caught = rng() < catchChance(CRIMES.BRIBE_GUARD.baseRisk, p.heat);
@@ -1560,7 +1578,7 @@ export const useGame = create<GameStore>()(
             : x,
         ),
       }));
-      get().addLog(`🚨 ${p.name} ketahuan menyuap sipir! Suap hangus + denda $${BRIBE_GUARD_FINE}, tetap dipenjara.`, "JAIL", playerId);
+      get().addLog("log.crime.bribeCaught", { name: p.name, fine: BRIBE_GUARD_FINE }, "JAIL", playerId);
       coverShortfall(get, set, playerId);
     } else {
       set((st) => ({
@@ -1571,7 +1589,7 @@ export const useGame = create<GameStore>()(
         ),
         turnPhase: "WAITING_ROLL",
       }));
-      get().addLog(`🤫 ${p.name} menyuap sipir $${BRIBE_GUARD_COST} dan keluar penjara tanpa prosedur.`, "JAIL", playerId);
+      get().addLog("log.crime.bribeOk", { name: p.name, cost: BRIBE_GUARD_COST }, "JAIL", playerId);
     }
   },
 
@@ -1580,11 +1598,11 @@ export const useGame = create<GameStore>()(
     const p = s.players[playerId];
     if (!p || p.bankrupt || p.inJail) return;
     if (p.lobbyActive) {
-      get().addLog(`${p.name} sudah punya perk lobi yang aktif.`, "SYSTEM", playerId);
+      get().addLog("log.crime.lobbyActive", { name: p.name }, "SYSTEM", playerId);
       return;
     }
     if (p.balance < LOBBY_COST) {
-      get().addLog(`${p.name} tak punya $${LOBBY_COST} untuk melobi.`, "SYSTEM", playerId);
+      get().addLog("log.crime.lobbyNoCash", { name: p.name, cost: LOBBY_COST }, "SYSTEM", playerId);
       return;
     }
     const caught = rng() < catchChance(CRIMES.LOBBY.baseRisk, p.heat);
@@ -1596,8 +1614,8 @@ export const useGame = create<GameStore>()(
             : x,
         ),
       }));
-      get().addLog(`🚨 Skandal! ${p.name} ketahuan melobi pemerintah — denda $${LOBBY_FINE}, lobi gagal.`, "PAYMENT", playerId);
-      if (p.heat + HEAT_ON_CAUGHT >= HEAT_JAIL_THRESHOLD) sendToJailById(get, set, playerId, "Terseret kasus suap pejabat");
+      get().addLog("log.crime.lobbyCaught", { name: p.name, fine: LOBBY_FINE }, "PAYMENT", playerId);
+      if (p.heat + HEAT_ON_CAUGHT >= HEAT_JAIL_THRESHOLD) sendToJailById(get, set, playerId, "log.jail.reason.bribeScandal");
       coverShortfall(get, set, playerId);
     } else {
       set((st) => ({
@@ -1607,7 +1625,7 @@ export const useGame = create<GameStore>()(
             : x,
         ),
       }));
-      get().addLog(`🤝 ${p.name} berhasil melobi: bebas pajak properti & sewa +10% sampai siklus ekonomi berikutnya.`, "ACTION", playerId);
+      get().addLog("log.crime.lobbyOk", { name: p.name }, "ACTION", playerId);
     }
   },
 
@@ -1618,9 +1636,8 @@ export const useGame = create<GameStore>()(
     const next = !p.evadeNextRent;
     set((st) => ({ players: st.players.map((x) => (x.id === playerId ? { ...x, evadeNextRent: next } : x)) }));
     get().addLog(
-      next
-        ? `${p.name} mengatur pembukuan — sewa berikutnya yang ia bayar akan digelapkan (risiko audit).`
-        : `${p.name} membatalkan rencana penggelapan pembukuan.`,
+      next ? "log.crime.evadeArm" : "log.crime.evadeCancel",
+      { name: p.name },
       "ACTION",
       playerId,
     );
@@ -1634,7 +1651,7 @@ export const useGame = create<GameStore>()(
     if (!a.participants.includes(playerId)) return;
     const cost = rigAuctionCost(a.currentBid);
     if (p.balance < cost) {
-      get().addLog(`${p.name} tak punya $${cost} untuk memanipulasi lelang.`, "SYSTEM", playerId);
+      get().addLog("log.crime.rigNoCash", { name: p.name, cost }, "SYSTEM", playerId);
       return;
     }
     const caught = rng() < catchChance(CRIMES.RIG_AUCTION.baseRisk, p.heat);
@@ -1650,7 +1667,7 @@ export const useGame = create<GameStore>()(
         auction: EMPTY_AUCTION,
         turnPhase: resume ?? "POST_ACTION",
       }));
-      get().addLog(`🚨 ${p.name} ketahuan memanipulasi lelang ${getSpace(spaceIndex).name}! Lelang dibatalkan + denda $${RIG_AUCTION_FINE}.`, "AUCTION", playerId);
+      get().addLog("log.crime.rigCaught", { name: p.name, space: { tKey: `board.${spaceIndex}.name` }, fine: RIG_AUCTION_FINE }, "AUCTION", playerId);
       coverShortfall(get, set, playerId);
       if (resume === null && get().turnPhase !== "GAME_OVER") {
         setTimeout(() => get().proceedAfterAction(get().lastDiceRoll.isDoubles), 600);
@@ -1659,7 +1676,7 @@ export const useGame = create<GameStore>()(
       set((st) => ({
         players: st.players.map((x) => (x.id === playerId ? { ...x, balance: x.balance - cost, heat: Math.min(MAX_HEAT, x.heat + HEAT_PER_CRIME) } : x)),
       }));
-      get().addLog(`🤫 ${p.name} menyuap panitia lelang ($${cost}) dan memenangkan ${getSpace(spaceIndex).name}.`, "AUCTION", playerId);
+      get().addLog("log.crime.rigOk", { name: p.name, cost, space: { tKey: `board.${spaceIndex}.name` } }, "AUCTION", playerId);
       resolveAuctionWin(get, set, playerId, a.currentBid, spaceIndex);
     }
   },
@@ -1668,9 +1685,9 @@ export const useGame = create<GameStore>()(
     const s = get();
     const from = s.players[trade.fromId];
     const to = s.players[trade.toId];
-    if (from?.inJail) { get().addLog(`${from.name} sedang dipenjara — tak bisa mengajukan trade.`, "SYSTEM", trade.fromId); return; }
+    if (from?.inJail) { get().addLog("log.trade.inJail", { name: from.name }, "SYSTEM", trade.fromId); return; }
     set({ pendingTrade: trade });
-    get().addLog(`${from?.name} mengajukan tawaran trade ke ${to?.name}.`, "TRADE", trade.fromId);
+    get().addLog("log.trade.propose", { from: from?.name ?? "", to: to?.name ?? "" }, "TRADE", trade.fromId);
     if (to?.type === "AI") {
       // AI decides (with a short "thinking" delay)
       setTimeout(() => {
@@ -1699,7 +1716,7 @@ export const useGame = create<GameStore>()(
     const from = get().players[t.fromId];
     const to = get().players[t.toId];
     if (from.balance < fromNetPay || to.balance < toNetPay) {
-      get().addLog(`Trade gagal: aset ${from.balance < fromNetPay ? from.name : to.name} tidak cukup untuk menutup cash.`, "SYSTEM");
+      get().addLog("log.trade.failCash", { name: from.balance < fromNetPay ? from.name : to.name }, "SYSTEM");
       set({ pendingTrade: null });
       return;
     }
@@ -1741,7 +1758,7 @@ export const useGame = create<GameStore>()(
       })(),
       pendingTrade: null,
     }));
-    get().addLog(`Trade berhasil antara ${from.name} dan ${to.name}.`, "TRADE");
+    get().addLog("log.trade.success", { from: from.name, to: to.name }, "TRADE");
   },
 
   rejectTrade: () => {
@@ -1749,7 +1766,7 @@ export const useGame = create<GameStore>()(
     if (t) {
       const from = get().players[t.fromId];
       const to = get().players[t.toId];
-      get().addLog(`${to?.name} menolak tawaran trade dari ${from?.name}.`, "TRADE", t.toId);
+      get().addLog("log.trade.reject", { to: to?.name ?? "", from: from?.name ?? "" }, "TRADE", t.toId);
     }
     set({ pendingTrade: null });
   },
@@ -1766,7 +1783,7 @@ export const useGame = create<GameStore>()(
       ),
       pendingSpaceAction: null,
     }));
-    get().addLog(`${player.name} bayar Income Tax 10% dari total aset $${netWorth} = $${tax}.`, "PAYMENT", player.id);
+    get().addLog("log.tax.incomePercent", { name: player.name, net: netWorth, tax }, "PAYMENT", player.id);
     checkBankruptcyAndProceed(get, set, get().lastDiceRoll.isDoubles);
   },
 
@@ -1780,7 +1797,7 @@ export const useGame = create<GameStore>()(
       ),
       pendingSpaceAction: null,
     }));
-    get().addLog(`${player.name} bayar Income Tax flat $200.`, "PAYMENT", player.id);
+    get().addLog("log.tax.incomeFlat", { name: player.name }, "PAYMENT", player.id);
     checkBankruptcyAndProceed(get, set, get().lastDiceRoll.isDoubles);
   },
 
@@ -1840,7 +1857,16 @@ export const useGame = create<GameStore>()(
     }),
     {
       name: "web-monopoly-save",
-      version: 1,
+      // v2: log entries changed from preformatted strings to {key,params} for
+      // bilingual rendering. Drop any old-format log lines on load.
+      version: 2,
+      migrate: (persisted, version) => {
+        const st = persisted as Partial<GameState> | undefined;
+        if (st && version < 2 && Array.isArray(st.log)) {
+          st.log = st.log.filter((e) => e && typeof e === "object" && "msg" in e);
+        }
+        return st as GameState;
+      },
       storage: createDebouncedStorage(),
       // Persist only serialisable game data — never functions, and skip `board`
       // which is static (rebuilt from BOARD) and bloats every write.
@@ -1949,16 +1975,16 @@ type SetFn = (fn: (s: GameState & GameStore) => Partial<GameState & GameStore>) 
 
 // Investor-pact rent rules. An investor pays nothing on their vassal's property;
 // a vassal pays only the base land rent on their investor's property.
-function pactAdjustRent(s: GameState, payerId: number, ownerId: number, fullRent: number, spaceIndex: number): { rent: number; note: string | null } {
+function pactAdjustRent(s: GameState, payerId: number, ownerId: number, fullRent: number, spaceIndex: number): { rent: number; note: LogMsg | null } {
   const payer = s.players[payerId];
   const owner = s.players[ownerId];
   if (owner.investorId === payerId) {
-    return { rent: 0, note: `${payer.name} (investor) bebas sewa di properti ${owner.name}.` };
+    return { rent: 0, note: { key: "log.pact.investorFree", params: { payer: payer.name, owner: owner.name } } };
   }
   if (payer.investorId === ownerId) {
     const sp = getSpace(spaceIndex);
     const base = sp.type === "PROPERTY" ? (sp as { rent: number[] }).rent[0] : fullRent;
-    return { rent: base, note: `${payer.name} hanya bayar sewa dasar tanah ke investornya ${owner.name}.` };
+    return { rent: base, note: { key: "log.pact.vassalBase", params: { payer: payer.name, owner: owner.name } } };
   }
   return { rent: fullRent, note: null };
 }
@@ -1982,9 +2008,9 @@ function routePactShare(get: () => GameState & GameStore, set: SetFn, ownerId: n
       return p;
     }),
   }));
-  get().addLog(`Bagi hasil pakta: $${share} dari sewa ${owner.name} → investor.`, "PAYMENT", ownerId);
+  get().addLog("log.pact.share", { share, owner: owner.name }, "PAYMENT", ownerId);
   if (get().players[ownerId].investorId === null) {
-    get().addLog(`Pakta investasi ${owner.name} selesai — modal investor sudah kembali.`, "SYSTEM", ownerId);
+    get().addLog("log.pact.done", { owner: owner.name }, "SYSTEM", ownerId);
   }
 }
 
@@ -2004,7 +2030,7 @@ function resolveAuctionWin(get: () => GameState & GameStore, set: SetFn, winnerI
     auction: EMPTY_AUCTION,
     turnPhase: resumePhase ?? "POST_ACTION",
   }));
-  get().addLog(`${get().players[winnerId].name} memenangkan lelang ${getSpace(spaceIndex).name} dengan $${bidAmount}.`, "AUCTION", winnerId);
+  get().addLog("log.auction.win", { name: get().players[winnerId].name, space: { tKey: `board.${spaceIndex}.name` }, bid: bidAmount }, "AUCTION", winnerId);
   if (resumePhase === null) {
     setTimeout(() => get().proceedAfterAction(get().lastDiceRoll.isDoubles), 600);
   }
@@ -2012,9 +2038,6 @@ function resolveAuctionWin(get: () => GameState & GameStore, set: SetFn, winnerI
 
 // Fire a random tiered "wave" event (regular/special/rare/mythos). Most just
 // inject cash to keep the game lively; rarer tiers can swing fortunes.
-const TIER_LABEL: Record<string, string> = {
-  REGULAR: "Event", SPECIAL: "Event Spesial", RARE: "Event Langka", MYTHOS: "Event Mythos",
-};
 function triggerWaveEvent(
   get: () => GameState & GameStore,
   set: (fn: (s: GameState & GameStore) => Partial<GameState & GameStore>) => void,
@@ -2037,9 +2060,13 @@ function triggerWaveEvent(
   };
   set((st) => ({
     players: ev.apply(st.players, ctx),
-    eventMessage: { title: ev.title, detail: ev.detail, tier: ev.tier },
+    eventMessage: { title: tr(`event.${ev.key}.title`), detail: tr(`event.${ev.key}.detail`), tier: ev.tier },
   }));
-  get().addLog(`${TIER_LABEL[ev.tier]} (Ronde ${round}) — ${ev.title}: ${ev.detail}`, "SYSTEM");
+  get().addLog(
+    "log.event.fired",
+    { tier: { tKey: `event.tier.${ev.tier}` }, round, title: { tKey: `event.${ev.key}.title` }, detail: { tKey: `event.${ev.key}.detail` } },
+    "SYSTEM",
+  );
 }
 
 // ===== Fiscal Year (scheduled, every 12 rounds) =====
@@ -2051,7 +2078,7 @@ function applyFiscalToPlayer(get: () => GameState & GameStore, set: SetFn, playe
   const net = getNetWorthPublic(get(), playerId);
   const { balance, note } = def.apply(player, choiceId, net);
   set((st) => ({ players: st.players.map((p) => (p.id === playerId ? { ...p, balance } : p)) }));
-  get().addLog(note, "PAYMENT", playerId);
+  get().addLog(note.key, note.params, "PAYMENT", playerId);
   if (get().players[playerId].balance < 0) {
     liquidateForDebt(get, set, playerId, 0);
     if (get().players[playerId].balance < 0) {
@@ -2068,7 +2095,7 @@ function finalizeFiscal(get: () => GameState & GameStore, set: SetFn, def: Fisca
     if (active.length > 0) {
       const poorest = active.reduce((a, b) => (b.balance < a.balance ? b : a));
       set((st) => ({ players: st.players.map((p) => (p.id === poorest.id ? { ...p, balance: p.balance + 200 } : p)) }));
-      get().addLog(`Subsidi pemulihan: ${poorest.name} menerima $200.`, "PAYMENT", poorest.id);
+      get().addLog("log.fiscal.subsidy", { name: poorest.name }, "PAYMENT", poorest.id);
     }
   }
   set(() => ({ pendingFiscal: null }));
@@ -2081,7 +2108,7 @@ function triggerFiscal(get: () => GameState & GameStore, set: SetFn, round: numb
   // regulations for the new economic cycle. Everyone reacts to the new rates.
   applyMonetaryPolicy(get, set);
   const def = fiscalForRound(round);
-  get().addLog(`📅 ${def.title} (Ronde ${round}) dimulai.`, "SYSTEM");
+  get().addLog("log.fiscal.start", { title: { tKey: def.titleKey }, round }, "SYSTEM");
   const humanQueue: number[] = [];
   for (const p of get().players) {
     if (p.bankrupt) continue;
@@ -2096,7 +2123,7 @@ function triggerFiscal(get: () => GameState & GameStore, set: SetFn, round: numb
   if (humanQueue.length === 0) {
     finalizeFiscal(get, set, def);
   } else {
-    set(() => ({ pendingFiscal: { kind: def.kind, title: def.title, intro: def.intro, choices: def.choices, queue: humanQueue } }));
+    set(() => ({ pendingFiscal: { kind: def.kind, titleKey: def.titleKey, introKey: def.introKey, choices: def.choices, queue: humanQueue } }));
   }
 }
 
@@ -2104,17 +2131,29 @@ function triggerFiscal(get: () => GameState & GameStore, set: SetFn, round: numb
 // regulations for a new economic cycle, then announce it via the event banner.
 function applyMonetaryPolicy(get: () => GameState & GameStore, set: SetFn) {
   const s = get();
-  const { centralRate, reg, title, detail } = rollMonetaryPolicy({ centralRate: s.centralRate, reg: s.regulations });
+  const { centralRate, reg, id } = rollMonetaryPolicy({ centralRate: s.centralRate, reg: s.regulations });
   // A new cycle resets last cycle's lobby perks.
   set((st) => ({ centralRate, regulations: reg, players: st.players.map((p) => (p.lobbyActive ? { ...p, lobbyActive: false } : p)) }));
   const ratePct = Math.round(centralRate * 100);
   const rentPct = Math.round((reg.rentMod - 1) * 100);
   const taxPct = Math.round(reg.propertyTaxRate * 100);
-  const bits = [`bunga acuan ${ratePct}%`];
-  if (rentPct !== 0) bits.push(`sewa ${rentPct > 0 ? "+" : ""}${rentPct}%`);
-  if (taxPct > 0) bits.push(`pajak properti ${taxPct}%/ronde`);
-  get().addLog(`🏦 Kebijakan Ekonomi — ${title}: ${detail} (${bits.join(", ")}).`, "SYSTEM");
-  set(() => ({ eventMessage: { title: `Kebijakan: ${title}`, detail: `${detail} → ${bits.join(", ")}.`, tier: "SPECIAL" } }));
+  // Bits carry numbers + short labels; render once in the active locale (snapshot).
+  const bits = [tr("policy.bits.rate", { v: ratePct })];
+  if (rentPct !== 0) bits.push(tr("policy.bits.rent", { sign: rentPct > 0 ? "+" : "", v: rentPct }));
+  if (taxPct > 0) bits.push(tr("policy.bits.tax", { v: taxPct }));
+  const bitsStr = bits.join(", ");
+  get().addLog(
+    "log.policy.applied",
+    { title: { tKey: `policy.${id}.title` }, detail: { tKey: `policy.${id}.detail` }, bits: bitsStr },
+    "SYSTEM",
+  );
+  set(() => ({
+    eventMessage: {
+      title: tr("ui.policy.bannerTitle", { title: tr(`policy.${id}.title`) }),
+      detail: `${tr(`policy.${id}.detail`)} → ${bitsStr}.`,
+      tier: "SPECIAL",
+    },
+  }));
 }
 
 // Per-turn settlement for the player whose turn just ended: pay this round's loan
@@ -2142,7 +2181,7 @@ function serviceBankAndGovernment(get: () => GameState & GameStore, set: SetFn, 
     const tax = Math.ceil(propValue * taxRate);
     if (tax > 0) {
       set((st) => ({ players: st.players.map((p) => (p.id === playerId ? { ...p, balance: p.balance - tax } : p)) }));
-      get().addLog(`🏛️ ${player.name} bayar pajak properti $${tax} (${Math.round(taxRate * 100)}%/ronde).`, "PAYMENT", playerId);
+      get().addLog("log.gov.propertyTax", { name: player.name, tax, rate: Math.round(taxRate * 100) }, "PAYMENT", playerId);
     }
   }
 
@@ -2167,9 +2206,8 @@ function serviceBankAndGovernment(get: () => GameState & GameStore, set: SetFn, 
       }),
     }));
     get().addLog(
-      closes
-        ? `🏦 ${player.name} melunasi cicilan terakhir $${total} (pokok $${principalPart} + bunga $${interest}).`
-        : `🏦 ${player.name} bayar cicilan pinjaman $${total} (pokok $${principalPart} + bunga $${interest}).`,
+      closes ? "log.loan.installmentLast" : "log.loan.installment",
+      { name: player.name, total, principal: principalPart, interest },
       "PAYMENT",
       playerId,
     );
@@ -2194,13 +2232,13 @@ function coverShortfall(get: () => GameState & GameStore, set: SetFn, playerId: 
 }
 
 // Throw a player in jail by id (used by crime fallout, not a board move).
-function sendToJailById(get: () => GameState & GameStore, set: SetFn, playerId: number, reason: string) {
+function sendToJailById(get: () => GameState & GameStore, set: SetFn, playerId: number, reasonKey: string) {
   set((st) => ({
     players: st.players.map((p) =>
       p.id === playerId ? { ...p, position: JAIL_INDEX, inJail: true, jailTurns: 0, jailCount: p.jailCount + 1 } : p,
     ),
   }));
-  get().addLog(`⛓️ ${get().players[playerId].name} dijebloskan ke penjara — ${reason}.`, "JAIL", playerId);
+  get().addLog("log.jail.sentenced", { name: get().players[playerId].name, reason: { tKey: reasonKey } }, "JAIL", playerId);
 }
 
 // Owner-side rent modifiers: lobby perk boosts rent; a jailed owner can't manage
@@ -2230,12 +2268,12 @@ function applyEvasion(get: () => GameState & GameStore, set: SetFn, payerId: num
         p.id === payerId ? { ...p, balance: p.balance - penalty, heat: Math.min(MAX_HEAT, p.heat + HEAT_ON_CAUGHT) } : p,
       ),
     }));
-    get().addLog(`🚨 ${payer.name} kena audit — bayar sewa penuh + denda penggelapan $${penalty}.`, "PAYMENT", payerId);
-    if (payer.heat + HEAT_ON_CAUGHT >= HEAT_JAIL_THRESHOLD) sendToJailById(get, set, payerId, "terbukti menggelapkan pembukuan");
+    get().addLog("log.crime.auditCaught", { name: payer.name, penalty }, "PAYMENT", payerId);
+    if (payer.heat + HEAT_ON_CAUGHT >= HEAT_JAIL_THRESHOLD) sendToJailById(get, set, payerId, "log.jail.reason.evasion");
     return rent;
   }
   set((st) => ({ players: st.players.map((p) => (p.id === payerId ? { ...p, heat: Math.min(MAX_HEAT, p.heat + HEAT_PER_CRIME) } : p)) }));
-  get().addLog(`🤫 ${payer.name} menggelapkan pembukuan — sewa dibayar hanya $${reduced} (dari $${rent}).`, "PAYMENT", payerId);
+  get().addLog("log.crime.evadeOk", { name: payer.name, reduced, rent }, "PAYMENT", payerId);
   return reduced;
 }
 
@@ -2312,7 +2350,8 @@ function liquidateForDebt(
   }));
   if (balance > startBalance) {
     get().addLog(
-      `${player.name} menjual/menggadaikan aset untuk membayar (saldo kini $${Math.max(0, balance)}).`,
+      "log.liquidate",
+      { name: player.name, balance: Math.max(0, balance) },
       "PAYMENT",
       playerId,
     );
@@ -2379,7 +2418,7 @@ function doRescue(get: () => GameState & GameStore, set: SetFn, investorId: numb
   }));
   const inv = get().players[investorId];
   const tgt = get().players[targetId];
-  get().addLog(`${inv.name} menanam modal $${debt} untuk menyelamatkan ${tgt.name} (pakta bagi hasil sampai $${Math.ceil(debt * 1.5)}).`, "SYSTEM", investorId);
+  get().addLog("log.rescue.invest", { inv: inv.name, debt, tgt: tgt.name, target: Math.ceil(debt * 1.5) }, "SYSTEM", investorId);
 }
 
 // Bankruptcy after no rescue: claw back any unpayable deficit from the creditor
@@ -2402,7 +2441,7 @@ function declareBankruptcy(
 ) {
   const s = get();
   const player = s.players[playerId];
-  get().addLog(`${player.name} DINYATAKAN BANGKRUT!`, "SYSTEM", playerId);
+  get().addLog("log.bankrupt", { name: player.name }, "SYSTEM", playerId);
 
   // Dissolve any investor pacts involving this player (as patron or as vassal).
   set((st) => ({
@@ -2440,7 +2479,7 @@ function declareBankruptcy(
         return newOwnership;
       })(),
     }));
-    get().addLog(`Semua aset ${player.name} diserahkan ke ${creditor.name}.`, "SYSTEM");
+    get().addLog("log.assets.toCreditor", { name: player.name, creditor: creditor.name }, "SYSTEM");
   } else {
     // Bankrupt to bank - return all to bank, buildings destroyed
     set((st) => ({
@@ -2462,7 +2501,7 @@ function declareBankruptcy(
         return newBuildings;
       })(),
     }));
-    get().addLog(`Aset ${player.name} dikembalikan ke bank.`, "SYSTEM");
+    get().addLog("log.assets.toBank", { name: player.name }, "SYSTEM");
   }
 
   // Check winner
@@ -2470,7 +2509,7 @@ function declareBankruptcy(
   const winner = findWinner(newS);
   if (winner !== null) {
     set(() => ({ winnerId: winner, turnPhase: "GAME_OVER" }));
-    get().addLog(`${newS.players[winner].name} MEMENANGKAN PERMAINAN!`, "SYSTEM");
+    get().addLog("log.game.win", { name: newS.players[winner].name }, "SYSTEM");
   }
 }
 

@@ -207,11 +207,22 @@ export interface TradeOffer {
   getOutOfJailTo: number;
 }
 
+// A log message is stored as an i18n key plus its interpolation params, so the
+// whole history re-renders in the active language (see dict/log.ts). Param values
+// are plain strings/numbers, or `{ tKey }` references for nested localized names
+// (e.g. a property name) — kept loosely typed here to avoid importing i18n into
+// the game core.
+export type LogParam = string | number | { tKey: string };
+export interface LogMsg {
+  key: string;
+  params?: Record<string, LogParam>;
+}
+
 export interface LogEntry {
   id: number;
   turn: number;
   playerId: number | null;
-  message: string;
+  msg: LogMsg;
   kind: "ROLL" | "MOVE" | "ACTION" | "PAYMENT" | "CARD" | "AUCTION" | "SYSTEM" | "TRADE" | "BUILD" | "JAIL";
 }
 
@@ -242,9 +253,9 @@ export interface GameState {
   eventMessage: { title: string; detail: string; tier: EventTier } | null; // random event banner
   pendingFiscal: {
     kind: "TAX" | "INFLATION";
-    title: string;
-    intro: string;
-    choices: { id: string; label: string; desc: string }[];
+    titleKey: string;
+    introKey: string;
+    choices: { id: string; labelKey: string; descKey: string }[];
     queue: number[]; // human player ids still to decide (AIs resolve instantly)
   } | null;
   pendingRescue: {

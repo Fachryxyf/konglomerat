@@ -6,6 +6,7 @@ import { LOAN_TERMS, loanInterestRate, totalDebt } from "@/lib/monopoly/bank";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Landmark, Banknote, Percent, Building2, Scale, TrendingUp, TrendingDown } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   playerId: number;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function BankModal({ playerId, onClose }: Props) {
+  const t = useT();
   const state = useGame();
   const player = state.players[playerId];
   const takeLoan = useGame((s) => s.takeLoan);
@@ -44,47 +46,47 @@ export default function BankModal({ playerId, onClose }: Props) {
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto scrollbar-thin">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Landmark className="w-5 h-5 text-emerald-600" /> Bank Sentral &amp; Pinjaman
+            <Landmark className="w-5 h-5 text-emerald-600" /> {t("ui.bank.title")}
           </DialogTitle>
         </DialogHeader>
 
         {/* Policy summary */}
         <div className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-3 space-y-1.5 text-xs">
           <div className="font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
-            <Scale className="w-4 h-4" /> Kebijakan Berlaku
+            <Scale className="w-4 h-4" /> {t("ui.bank.policyTitle")}
           </div>
-          <Row icon={<Percent className="w-3.5 h-3.5" />} label="Suku bunga acuan (Bank Sentral)" value={`${Math.round(state.centralRate * 100)}% / ronde`} />
-          <Row icon={<Percent className="w-3.5 h-3.5" />} label="Bunga pinjaman (acuan + margin)" value={`${Math.round(rate * 100)}% / ronde`} />
+          <Row icon={<Percent className="w-3.5 h-3.5" />} label={t("ui.bank.baseRate")} value={t("ui.bank.perRound", { v: Math.round(state.centralRate * 100) })} />
+          <Row icon={<Percent className="w-3.5 h-3.5" />} label={t("ui.bank.loanRate")} value={t("ui.bank.perRound", { v: Math.round(rate * 100) })} />
           <Row
             icon={rentPct >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-            label="Regulasi sewa"
-            value={rentPct === 0 ? "Netral" : `${rentPct > 0 ? "+" : ""}${rentPct}% (${rentPct < 0 ? "kontrol sewa" : "deregulasi"})`}
+            label={t("ui.bank.rentReg")}
+            value={rentPct === 0 ? t("ui.bank.neutral") : t("ui.bank.rentVal", { sign: rentPct > 0 ? "+" : "", v: rentPct, mode: rentPct < 0 ? t("ui.bank.rentControl") : t("ui.bank.deregulation") })}
           />
-          <Row icon={<Building2 className="w-3.5 h-3.5" />} label="Pajak properti (pemerintah)" value={taxPct > 0 ? `${taxPct}% / ronde` : "Tidak ada"} />
+          <Row icon={<Building2 className="w-3.5 h-3.5" />} label={t("ui.bank.propTax")} value={taxPct > 0 ? t("ui.bank.perRound", { v: taxPct }) : t("ui.bank.none")} />
         </div>
 
         {/* My standing */}
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <Stat label="Saldo kas" value={`$${player.balance}`} />
-          <Stat label="Kekayaan bersih" value={`$${net}`} />
-          <Stat label="Total utang" value={`$${debt}`} tone={debt > 0 ? "warn" : undefined} />
-          <Stat label="Sisa plafon kredit" value={`$${limit}`} tone="good" />
+          <Stat label={t("ui.bank.cash")} value={`$${player.balance}`} />
+          <Stat label={t("ui.bank.net")} value={`$${net}`} />
+          <Stat label={t("ui.bank.debt")} value={`$${debt}`} tone={debt > 0 ? "warn" : undefined} />
+          <Stat label={t("ui.bank.creditLeft")} value={`$${limit}`} tone="good" />
         </div>
 
         {/* Active loans */}
         <div className="space-y-1.5">
-          <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Pinjaman Aktif</div>
+          <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{t("ui.bank.activeLoans")}</div>
           {(player.loans ?? []).length === 0 ? (
-            <div className="text-xs text-zinc-400 italic py-1">Belum ada pinjaman.</div>
+            <div className="text-xs text-zinc-400 italic py-1">{t("ui.bank.noLoans")}</div>
           ) : (
             (player.loans ?? []).map((loan) => {
               const payoff = loan.balance + Math.ceil(loan.balance * rate);
               return (
                 <div key={loan.id} className="flex items-center justify-between gap-2 rounded-md border border-zinc-200 dark:border-zinc-800 px-2.5 py-1.5 text-xs">
                   <div>
-                    <div className="font-medium">Sisa pokok ${loan.balance}</div>
+                    <div className="font-medium">{t("ui.bank.principalLeft", { v: loan.balance })}</div>
                     <div className="text-zinc-500 text-[11px]">
-                      {loan.roundsRemaining} ronde tersisa • cicilan ~${Math.ceil(loan.principalPerRound + loan.balance * rate)}/ronde
+                      {t("ui.bank.loanInfo", { rounds: loan.roundsRemaining, inst: Math.ceil(loan.principalPerRound + loan.balance * rate) })}
                     </div>
                   </div>
                   <Button
@@ -94,7 +96,7 @@ export default function BankModal({ playerId, onClose }: Props) {
                     disabled={!isMyTurnHuman || player.balance < payoff}
                     onClick={() => repayLoan(playerId, loan.id)}
                   >
-                    Lunasi ${payoff}
+                    {t("ui.bank.repay", { v: payoff })}
                   </Button>
                 </div>
               );
@@ -105,10 +107,10 @@ export default function BankModal({ playerId, onClose }: Props) {
         {/* Borrow form */}
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 space-y-2">
           <div className="text-xs font-semibold flex items-center gap-1.5">
-            <Banknote className="w-4 h-4 text-emerald-600" /> Ajukan Pinjaman
+            <Banknote className="w-4 h-4 text-emerald-600" /> {t("ui.bank.applyLoan")}
           </div>
           {limit < 50 ? (
-            <div className="text-xs text-zinc-400 italic">Plafon kredit tidak cukup untuk meminjam (butuh aset lebih banyak).</div>
+            <div className="text-xs text-zinc-400 italic">{t("ui.bank.cantBorrow")}</div>
           ) : (
             <>
               <div className="flex items-center gap-2">
@@ -131,22 +133,22 @@ export default function BankModal({ playerId, onClose }: Props) {
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-zinc-500">Tenor:</span>
-                {LOAN_TERMS.map((t) => (
+                <span className="text-[11px] text-zinc-500">{t("ui.bank.term")}</span>
+                {LOAN_TERMS.map((tm) => (
                   <button
-                    key={t}
-                    onClick={() => setTerm(t)}
+                    key={tm}
+                    onClick={() => setTerm(tm)}
                     className={`px-2 py-0.5 rounded text-[11px] border transition ${
-                      term === t ? "bg-emerald-600 text-white border-emerald-600" : "border-zinc-300 dark:border-zinc-700 hover:bg-accent"
+                      term === tm ? "bg-emerald-600 text-white border-emerald-600" : "border-zinc-300 dark:border-zinc-700 hover:bg-accent"
                     }`}
                   >
-                    {t} ronde
+                    {t("ui.bank.termVal", { t: tm })}
                   </button>
                 ))}
               </div>
               {reqAmount >= 50 && (
                 <div className="text-[11px] text-zinc-500">
-                  Estimasi cicilan ronde pertama: <strong className="text-zinc-700 dark:text-zinc-300">${estInstallment}</strong> (pokok ${principalPerRound} + bunga ${firstInterest}). Bunga mengikuti suku bunga acuan yang berlaku.
+                  {t("ui.bank.estLabel")} <strong className="text-zinc-700 dark:text-zinc-300">${estInstallment}</strong> {t("ui.bank.estDetail", { p: principalPerRound, i: firstInterest })}
                 </div>
               )}
               <Button
@@ -154,13 +156,13 @@ export default function BankModal({ playerId, onClose }: Props) {
                 disabled={!canBorrow}
                 onClick={() => { takeLoan(playerId, reqAmount, term); setAmount(0); }}
               >
-                {isMyTurnHuman ? `Pinjam $${reqAmount}` : "Hanya bisa pinjam saat giliranmu"}
+                {isMyTurnHuman ? t("ui.bank.borrow", { v: reqAmount }) : t("ui.bank.turnOnly")}
               </Button>
             </>
           )}
         </div>
 
-        <Button variant="outline" className="w-full" onClick={onClose}>Tutup</Button>
+        <Button variant="outline" className="w-full" onClick={onClose}>{t("ui.common.close")}</Button>
       </DialogContent>
     </Dialog>
   );

@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { PropertySpace } from "@/lib/monopoly/types";
 import { Bot, Lock, Key, Star, Hotel, Home, Coins, ArrowLeftRight, ClipboardList } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   playerId: number;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function PropertyManagerModal({ playerId, onClose }: Props) {
+  const t = useT();
   const players = useGame((s) => s.players);
   const ownership = useGame((s) => s.ownership);
   const buildings = useGame((s) => s.buildings);
@@ -57,11 +59,11 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
             {player.type === "AI" && <Bot className="w-4 h-4 text-zinc-500" />}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-1.5 flex-wrap">
-            <span className="tabular-nums">Saldo: ${player.balance.toLocaleString()} • Properti: {player.properties.length}</span>
-            {player.inJail && <span className="inline-flex items-center gap-0.5 text-red-500"><Lock className="w-3 h-3" /> Di Penjara</span>}
+            <span className="tabular-nums">{t("ui.pm.balanceProps", { bal: player.balance.toLocaleString(), n: player.properties.length })}</span>
+            {player.inJail && <span className="inline-flex items-center gap-0.5 text-red-500"><Lock className="w-3 h-3" /> {t("ui.pm.inJail")}</span>}
             {player.getOutOfJailCards > 0 && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
-                <Key className="w-3 h-3" /> Kartu Bebas Penjara ×{player.getOutOfJailCards}
+                <Key className="w-3 h-3" /> {t("ui.pm.goojChip", { n: player.getOutOfJailCards })}
               </span>
             )}
           </DialogDescription>
@@ -69,15 +71,15 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
 
         <Tabs defaultValue="properties" className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="properties">Properti</TabsTrigger>
-            <TabsTrigger value="build">Bangun</TabsTrigger>
-            <TabsTrigger value="trade">Trade</TabsTrigger>
+            <TabsTrigger value="properties">{t("ui.pm.tab.properties")}</TabsTrigger>
+            <TabsTrigger value="build">{t("ui.pm.tab.build")}</TabsTrigger>
+            <TabsTrigger value="trade">{t("ui.pm.tab.trade")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="properties" className="flex-1 overflow-hidden">
             <ScrollArea className="h-[400px] pr-2">
               {player.properties.length === 0 ? (
-                <div className="text-center text-muted-foreground italic py-8">Belum memiliki properti.</div>
+                <div className="text-center text-muted-foreground italic py-8">{t("ui.pm.noProps")}</div>
               ) : (
                 <div className="space-y-1.5">
                   {player.properties.map((idx) => {
@@ -97,14 +99,14 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                         <div className="w-3 h-8 rounded-sm" style={{ backgroundColor: colorHex }} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate flex items-center gap-1">
-                            {space.name}
+                            {t(`board.${idx}.name`)}
                             {mono && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
-                            {o?.mortgaged && <span className="text-xs text-red-600">[GADAI]</span>}
+                            {o?.mortgaged && <span className="text-xs text-red-600">[{t("ui.badge.mortgaged")}]</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             ${getPrice(space)}
-                            {space.type === "PROPERTY" && b && (b.hotel ? " • Hotel" : b.houses > 0 ? ` • ${b.houses} rumah` : "")}
-                            {space.type === "RAILROAD" && ` • ${countRailroads(useGame.getState(), playerId)} stasiun dimiliki`}
+                            {space.type === "PROPERTY" && b && (b.hotel ? t("ui.pm.dotHotel") : b.houses > 0 ? t("ui.pm.dotHouses", { n: b.houses }) : "")}
+                            {space.type === "RAILROAD" && t("ui.pm.dotStations", { n: countRailroads(useGame.getState(), playerId) })}
                           </div>
                         </div>
                         {isOwnTurn && isHuman && (
@@ -117,7 +119,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                 disabled={player.balance < Math.ceil(getMortgageValuePub(space) * 1.1)}
                                 className="text-xs h-7"
                               >
-                                Lunasi
+                                {t("ui.pm.unmortgage")}
                               </Button>
                             ) : (
                               <Button
@@ -127,7 +129,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                 disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                                 className="text-xs h-7"
                               >
-                                Gadai
+                                {t("ui.pm.mortgage")}
                               </Button>
                             )}
                             <Button
@@ -136,9 +138,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                               onClick={() => { auctionOwnProperty(idx); onClose(); }}
                               disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                               className="text-xs h-7"
-                              title="Lelang properti ini ke pemain lain (hasil masuk ke kamu)"
+                              title={t("ui.pm.auctionTitle")}
                             >
-                              Lelang
+                              {t("ui.pm.auction")}
                             </Button>
                             <Button
                               size="sm"
@@ -146,9 +148,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                               onClick={() => sellToBank(idx)}
                               disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                               className="text-xs h-7"
-                              title={`Jual ke bank (terima $${o?.mortgaged ? 0 : getMortgageValuePub(space)})`}
+                              title={t("ui.pm.sellBankTitle", { v: o?.mortgaged ? 0 : getMortgageValuePub(space) })}
                             >
-                              Jual Bank
+                              {t("ui.pm.sellBank")}
                             </Button>
                           </div>
                         )}
@@ -164,22 +166,22 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
             <ScrollArea className="h-[400px] pr-2">
               {!isOwnTurn ? (
                 <div className="text-center text-muted-foreground italic py-8">
-                  Hanya bisa membangun saat giliranmu sendiri.
+                  {t("ui.pm.buildTurnOnly")}
                 </div>
               ) : !isHuman ? (
                 <div className="text-center text-muted-foreground italic py-8">
-                  Player AI - building otomatis.
+                  {t("ui.pm.aiAuto")}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-2 rounded inline-flex items-center gap-1.5 flex-wrap">
-                    <span className="font-medium">Bank:</span>
-                    <span className="inline-flex items-center gap-0.5"><Home className="w-3 h-3 text-emerald-600" /> {bank.houses} rumah</span>
-                    <span className="inline-flex items-center gap-0.5"><Hotel className="w-3 h-3 text-red-600" /> {bank.hotels} hotel tersedia</span>
+                    <span className="font-medium">{t("ui.pm.bankLabel")}</span>
+                    <span className="inline-flex items-center gap-0.5"><Home className="w-3 h-3 text-emerald-600" /> {t("ui.pm.bankHouses", { n: bank.houses })}</span>
+                    <span className="inline-flex items-center gap-0.5"><Hotel className="w-3 h-3 text-red-600" /> {t("ui.pm.bankHotels", { n: bank.hotels })}</span>
                   </div>
                   {player.properties.filter((idx) => getSpace(idx).type === "PROPERTY" && hasMonopoly(useGame.getState(), playerId, idx)).length === 0 ? (
                     <div className="text-center text-muted-foreground italic py-4">
-                      Belum memiliki monopoli color set apapun.
+                      {t("ui.pm.noMonopoly")}
                     </div>
                   ) : (
                     player.properties
@@ -196,9 +198,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                             <div className="flex items-center gap-2 mb-1.5">
                               <div className="w-3 h-8 rounded-sm" style={{ backgroundColor: colorHex }} />
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">{space.name}</div>
+                                <div className="font-medium text-sm truncate">{t(`board.${idx}.name`)}</div>
                                 <div className="text-xs text-muted-foreground">
-                                  ${space.housePrice}/rumah • Saat ini: {hasHotel ? "Hotel" : `${currentHouses} rumah`}
+                                  {t("ui.pm.perHouseNow", { price: space.housePrice, state: hasHotel ? t("ui.pm.stateHotel") : t("ui.pm.stateHouses", { n: currentHouses }) })}
                                 </div>
                               </div>
                             </div>
@@ -220,9 +222,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                           onClick={() => buildHouse(idx, count)}
                                           disabled={!canAfford || !bankHas}
                                           className="text-[10px] h-6 px-2 bg-emerald-600 hover:bg-emerald-700"
-                                          title={`Bangun ${count} rumah ($${cost})`}
+                                          title={t("ui.pm.buildTitle", { count, cost })}
                                         >
-                                          +{count} ({count === 1 ? "$" : ""}{cost})
+                                          {t("ui.pm.buildBtn", { count, cost })}
                                         </Button>
                                       );
                                     })}
@@ -233,9 +235,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                         onClick={() => buildHotel(idx)}
                                         disabled={player.balance < space.housePrice || bank.hotels === 0}
                                         className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-700"
-                                        title={`Bangun Hotel ($${space.housePrice})`}
+                                        title={t("ui.pm.hotelTitle", { cost: space.housePrice })}
                                       >
-                                        <Hotel className="w-3 h-3 mr-1" /> Hotel (${space.housePrice})
+                                        <Hotel className="w-3 h-3 mr-1" /> {t("ui.pm.hotelBtn", { cost: space.housePrice })}
                                       </Button>
                                     )}
                                   </>
@@ -249,7 +251,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                   disabled={player.balance < space.housePrice || bank.hotels === 0}
                                   className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-700"
                                 >
-                                  <Hotel className="w-3 h-3 mr-1" /> Hotel (${space.housePrice})
+                                  <Hotel className="w-3 h-3 mr-1" /> {t("ui.pm.hotelBtn", { cost: space.housePrice })}
                                 </Button>
                               )}
                               {/* Sell hotel */}
@@ -260,7 +262,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                   onClick={() => sellHotel(idx)}
                                   className="text-[10px] h-6 px-2"
                                 >
-                                  - Hotel (+${Math.floor(space.housePrice / 2)})
+                                  {t("ui.pm.sellHotelBtn", { refund: Math.floor(space.housePrice / 2) })}
                                 </Button>
                               )}
                               {/* Sell house: -1, -2, etc */}
@@ -277,9 +279,9 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                           variant="outline"
                                           onClick={() => sellHouse(idx, count)}
                                           className="text-[10px] h-6 px-2 text-red-600 hover:text-red-700"
-                                          title={`Jual ${count} rumah (+$${refund})`}
+                                          title={t("ui.pm.sellHouseTitle", { count, refund })}
                                         >
-                                          -{count} (+${refund})
+                                          {t("ui.pm.sellHouseBtn", { count, refund })}
                                         </Button>
                                       );
                                     })}
@@ -332,6 +334,7 @@ function hasColorSetBuildings(state: any, playerId: number, colorSet: string): b
 }
 
 function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void }) {
+  const t = useT();
   const players = useGame((s) => s.players);
   const ownership = useGame((s) => s.ownership);
   const proposeTrade = useGame((s) => s.proposeTrade);
@@ -355,7 +358,7 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
   const partnerMax = partner ? getLiquidatableCash(useGame.getState(), partner.id) : 0;
 
   if (!isMyTurn) {
-    return <div className="text-center text-muted-foreground italic py-8">Trade hanya bisa dilakukan saat giliranmu sendiri.</div>;
+    return <div className="text-center text-muted-foreground italic py-8">{t("ui.tt.notYourTurn")}</div>;
   }
 
   const handleSubmit = () => {
@@ -382,10 +385,10 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
   return (
     <div className="space-y-3 h-[400px] overflow-y-auto pr-2">
       <div className="text-[10px] bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded p-1.5 text-muted-foreground">
-        <strong>Mau beli properti lawan?</strong> Pilih propertinya di kolom <strong>kanan</strong> (kamu terima), lalu isi bayaranmu di <strong>“Cash yang KAMU bayar”</strong> kolom kiri.
+        {t("ui.tt.helpNote")}
       </div>
       <div>
-        <label className="text-xs font-medium">Trade dengan:</label>
+        <label className="text-xs font-medium">{t("ui.tt.tradeWith")}</label>
         <div className="flex flex-wrap gap-1 mt-1">
           {players.filter((p) => p.id !== playerId && !p.bankrupt).map((p) => (
             <button
@@ -417,11 +420,11 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                   className="w-3 h-3 rounded-full inline-block"
                   style={{ backgroundColor: me.color }}
                 />
-                {me.name} serahkan (kamu BAYAR) ↑
+                {t("ui.tt.givesPay", { name: me.name })}
               </div>
               <div className="space-y-1.5">
                 <div>
-                  <label className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-0.5"><Coins className="w-3 h-3" /> Cash yang KAMU bayar (maks ${meMax.toLocaleString()}):</label>
+                  <label className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-0.5"><Coins className="w-3 h-3" /> {t("ui.tt.cashYouPay", { max: meMax.toLocaleString() })}</label>
                   <input
                     type="number"
                     value={cashFrom || ""}
@@ -431,7 +434,7 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                   />
                 </div>
                 <div>
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Properti kamu yang dilepas ({propertiesFrom.length} dipilih):</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{t("ui.tt.propsYouGive", { n: propertiesFrom.length })}</div>
                   <div className="max-h-20 overflow-y-auto space-y-0.5 scrollbar-thin">
                     {me.properties.map((idx) => (
                       <button
@@ -442,15 +445,15 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                           propertiesFrom.includes(idx) ? "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-400 font-medium" : "border-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800",
                         )}
                       >
-                        {getSpace(idx).name}
+                        {t(`board.${idx}.name`)}
                       </button>
                     ))}
-                    {me.properties.length === 0 && <div className="text-[10px] italic text-muted-foreground">Tidak ada properti</div>}
+                    {me.properties.length === 0 && <div className="text-[10px] italic text-muted-foreground">{t("ui.tt.noProps")}</div>}
                   </div>
                 </div>
                 {/* GOOJ card chips */}
                 <div>
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Kartu Bebas Penjara ({me.getOutOfJailCards} dimiliki):</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{t("ui.tt.goojOwned", { n: me.getOutOfJailCards })}</div>
                   {me.getOutOfJailCards > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {Array.from({ length: me.getOutOfJailCards }).map((_, i) => (
@@ -463,14 +466,14 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                               ? "bg-amber-100 dark:bg-amber-950/40 border-amber-400 text-amber-700 dark:text-amber-300 font-semibold"
                               : "border-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800",
                           )}
-                          title={`Tawarkan ${i + 1} kartu`}
+                          title={t("ui.tt.offerN", { n: i + 1 })}
                         >
                           <Key className="w-2.5 h-2.5" /> {i + 1}
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-[10px] italic text-muted-foreground">Tidak punya kartu</div>
+                    <div className="text-[10px] italic text-muted-foreground">{t("ui.tt.noGooj")}</div>
                   )}
                 </div>
               </div>
@@ -483,11 +486,11 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                   className="w-3 h-3 rounded-full inline-block"
                   style={{ backgroundColor: partner.color }}
                 />
-                {partner.name} serahkan (kamu TERIMA) ↓
+                {t("ui.tt.givesReceive", { name: partner.name })}
               </div>
               <div className="space-y-1.5">
                 <div>
-                  <label className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 inline-flex items-center gap-0.5"><Coins className="w-3 h-3" /> Cash yang kamu MINTA dari {partner.name} (maks ${partnerMax.toLocaleString()}):</label>
+                  <label className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 inline-flex items-center gap-0.5"><Coins className="w-3 h-3" /> {t("ui.tt.cashYouAsk", { name: partner.name, max: partnerMax.toLocaleString() })}</label>
                   <input
                     type="number"
                     value={cashTo || ""}
@@ -497,7 +500,7 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                   />
                 </div>
                 <div>
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Properti {partner.name} yang kamu minta ({propertiesTo.length} dipilih):</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{t("ui.tt.propsYouAsk", { name: partner.name, n: propertiesTo.length })}</div>
                   <div className="max-h-20 overflow-y-auto space-y-0.5 scrollbar-thin">
                     {partner.properties.map((idx) => (
                       <button
@@ -508,15 +511,15 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                           propertiesTo.includes(idx) ? "bg-emerald-100 dark:bg-emerald-950/40 border-emerald-400 font-medium" : "border-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800",
                         )}
                       >
-                        {getSpace(idx).name}
+                        {t(`board.${idx}.name`)}
                       </button>
                     ))}
-                    {partner.properties.length === 0 && <div className="text-[10px] italic text-muted-foreground">Tidak ada properti</div>}
+                    {partner.properties.length === 0 && <div className="text-[10px] italic text-muted-foreground">{t("ui.tt.noProps")}</div>}
                   </div>
                 </div>
                 {/* GOOJ card chips */}
                 <div>
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Kartu Bebas Penjara ({partner.getOutOfJailCards} dimiliki):</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{t("ui.tt.goojOwned", { n: partner.getOutOfJailCards })}</div>
                   {partner.getOutOfJailCards > 0 ? (
                     <div className="flex flex-wrap gap-1">
                       {Array.from({ length: partner.getOutOfJailCards }).map((_, i) => (
@@ -529,14 +532,14 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
                               ? "bg-amber-100 dark:bg-amber-950/40 border-amber-400 text-amber-700 dark:text-amber-300 font-semibold"
                               : "border-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800",
                           )}
-                          title={`Minta ${i + 1} kartu`}
+                          title={t("ui.tt.askN", { n: i + 1 })}
                         >
                           <Key className="w-2.5 h-2.5" /> {i + 1}
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-[10px] italic text-muted-foreground">Tidak punya kartu</div>
+                    <div className="text-[10px] italic text-muted-foreground">{t("ui.tt.noGooj")}</div>
                   )}
                 </div>
               </div>
@@ -546,14 +549,14 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
           {/* Trade summary */}
           {(cashFrom > 0 || cashTo > 0 || propertiesFrom.length > 0 || propertiesTo.length > 0 || goojFrom > 0 || goojTo > 0) && (
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-md p-2 text-xs">
-              <div className="font-semibold mb-1 flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5" /> Ringkasan Trade:</div>
+              <div className="font-semibold mb-1 flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5" /> {t("ui.tt.summary")}</div>
               <div className="space-y-0.5">
-                {cashFrom > 0 && <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-yellow-500" /> {me.name} → ${cashFrom.toLocaleString()} → {partner.name}</div>}
-                {propertiesFrom.length > 0 && <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500" /> {me.name} → {propertiesFrom.length} properti → {partner.name}</div>}
-                {goojFrom > 0 && <div className="flex items-center gap-1"><Key className="w-3 h-3 text-amber-500" /> {me.name} → {goojFrom} kartu Bebas Penjara → {partner.name}</div>}
-                {cashTo > 0 && <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-yellow-500" /> {partner.name} → ${cashTo.toLocaleString()} → {me.name}</div>}
-                {propertiesTo.length > 0 && <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500" /> {partner.name} → {propertiesTo.length} properti → {me.name}</div>}
-                {goojTo > 0 && <div className="flex items-center gap-1"><Key className="w-3 h-3 text-amber-500" /> {partner.name} → {goojTo} kartu Bebas Penjara → {me.name}</div>}
+                {cashFrom > 0 && <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-yellow-500" /> {t("ui.tt.sumCash", { from: me.name, v: cashFrom.toLocaleString(), to: partner.name })}</div>}
+                {propertiesFrom.length > 0 && <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500" /> {t("ui.tt.sumProps", { from: me.name, n: propertiesFrom.length, to: partner.name })}</div>}
+                {goojFrom > 0 && <div className="flex items-center gap-1"><Key className="w-3 h-3 text-amber-500" /> {t("ui.tt.sumGooj", { from: me.name, n: goojFrom, to: partner.name })}</div>}
+                {cashTo > 0 && <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-yellow-500" /> {t("ui.tt.sumCash", { from: partner.name, v: cashTo.toLocaleString(), to: me.name })}</div>}
+                {propertiesTo.length > 0 && <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500" /> {t("ui.tt.sumProps", { from: partner.name, n: propertiesTo.length, to: me.name })}</div>}
+                {goojTo > 0 && <div className="flex items-center gap-1"><Key className="w-3 h-3 text-amber-500" /> {t("ui.tt.sumGooj", { from: partner.name, n: goojTo, to: me.name })}</div>}
               </div>
             </div>
           )}
@@ -563,7 +566,7 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
             disabled={!partner || (cashFrom === 0 && cashTo === 0 && propertiesFrom.length === 0 && propertiesTo.length === 0 && goojFrom === 0 && goojTo === 0)}
             className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
           >
-            <ArrowLeftRight className="w-4 h-4" /> Ajukan Trade
+            <ArrowLeftRight className="w-4 h-4" /> {t("ui.tt.submit")}
           </Button>
         </>
       )}

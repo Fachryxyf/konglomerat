@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 import type { ColorSet } from "@/lib/monopoly/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Coins, MapPin, Lock, Key, Train, Lightbulb, Star } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   onPlayerAction: (playerId: number) => void;
 }
 
 export default function PlayerPanel({ onPlayerAction }: Props) {
+  const t = useT();
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
   const ownership = useGame((s) => s.ownership);
@@ -57,7 +59,7 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                   {p.type === "AI" && (
                     <span
                       className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-zinc-100 dark:bg-zinc-800 text-[9px] font-medium text-zinc-600 dark:text-zinc-300"
-                      title={`AI ${p.difficulty}`}
+                      title={t("ui.player.aiTitle", { diff: t(`ui.ai.${p.difficulty.toLowerCase()}.label`) })}
                     >
                       <span className={cn(
                         "inline-block w-1.5 h-1.5 rounded-full",
@@ -68,18 +70,18 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                       AI
                     </span>
                   )}
-                  {p.bankrupt && <span className="text-[9px] font-bold text-red-500 px-1 rounded bg-red-50 dark:bg-red-950/40">BANGKRUT</span>}
+                  {p.bankrupt && <span className="text-[9px] font-bold text-red-500 px-1 rounded bg-red-50 dark:bg-red-950/40">{t("ui.player.bankrupt")}</span>}
                 </div>
                 <div className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-x-1.5 gap-y-0.5 flex-wrap">
                   <span className="inline-flex items-center gap-0.5 font-medium text-zinc-600 dark:text-zinc-300 tabular-nums">
                     <Coins className="w-3 h-3 text-yellow-500" />${p.balance.toLocaleString()}
                   </span>
                   <span className="inline-flex items-center gap-0.5 truncate max-w-[90px]">
-                    <MapPin className="w-3 h-3 text-rose-400 shrink-0" />{getSpace(p.position).name}
+                    <MapPin className="w-3 h-3 text-rose-400 shrink-0" />{t(`board.${p.position}.name`)}
                   </span>
                   {p.inJail && <Lock className="w-3 h-3 text-red-500" />}
                   {p.getOutOfJailCards > 0 && (
-                    <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold text-[9px]" title="Kartu Bebas Penjara (bisa dijual)">
+                    <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold text-[9px]" title={t("ui.player.goojTitle")}>
                       <Key className="w-2.5 h-2.5" />×{p.getOutOfJailCards}
                     </span>
                   )}
@@ -99,7 +101,7 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                   const allIndices = COLOR_SETS[colorSet] || [];
                   const hasAll = allIndices.every((idx) => ownership[idx]?.ownerId === p.id);
                   return (
-                    <div key={colorSet} className="flex gap-0.5 items-center" title={`${colorSet} (${hasAll ? "Monopoli" : "Tidak Lengkap"})`}>
+                    <div key={colorSet} className="flex gap-0.5 items-center" title={t("ui.player.colorTitle", { color: t(`board.color.${colorSet}`), status: hasAll ? t("ui.player.monopoly") : t("ui.player.incomplete") })}>
                       {sortedIndices.map((idx) => {
                         const o = ownership[idx];
                         const b = buildings[idx];
@@ -112,7 +114,7 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                               o?.mortgaged && "opacity-50",
                             )}
                             style={{ backgroundColor: getColorHex(colorSet) }}
-                            title={getSpace(idx).name}
+                            title={t(`board.${idx}.name`)}
                           >
                             {b && (b.hotel ? (
                               <span className="absolute inset-0 flex items-center justify-center text-[6px] sm:text-[7px] font-bold text-red-600 bg-white/85 rounded-sm">H</span>
@@ -143,7 +145,7 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                         "relative w-4 h-5 sm:w-5 sm:h-6 rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-600 hover:scale-110 transition cursor-pointer flex items-center justify-center text-white",
                         o?.mortgaged && "opacity-50",
                       )}
-                      title={space.name}
+                      title={t(`board.${idx}.name`)}
                     >
                       <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                     </button>
@@ -151,7 +153,7 @@ export default function PlayerPanel({ onPlayerAction }: Props) {
                 })}
               </div>
             ) : (
-              <div className="text-[10px] text-muted-foreground italic">Belum ada properti</div>
+              <div className="text-[10px] text-muted-foreground italic">{t("ui.player.noProps")}</div>
             )}
           </div>
         );
