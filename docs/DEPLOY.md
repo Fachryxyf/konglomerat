@@ -77,17 +77,17 @@ sudo ufw status
 Port **3737 tidak dibuka** — app hanya bind ke localhost, diakses lewat Caddy.
 
 ## 7. Selesai
-Buka `https://example.com` (atau `http://IP_VM`). 🎉
+Buka `https://example.com` (atau `http://IP_VM`).
 
 ---
 
-## 🔁 Update / redeploy (sesudah push baru ke GitHub)
+## Update / redeploy (sesudah push baru ke GitHub)
 ```bash
 cd ~/game-monopoly
 bash deploy/deploy.sh        # git pull → install → build → restart
 ```
 
-## 🔎 Log & troubleshooting
+## Log & troubleshooting
 ```bash
 journalctl -u konglomerat -f          # log app (live)
 sudo journalctl -u caddy -f           # log Caddy / HTTPS

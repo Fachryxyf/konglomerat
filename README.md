@@ -1,4 +1,4 @@
-# 🏙️ Konglomerat
+# Konglomerat
 
 > Bangun imperium properti & ekonomi di kota fiktif **Kota Raya**.
 
@@ -7,25 +7,18 @@ dengan ekonomi yang hidup: bank sentral, pinjaman berbunga, tahun fiskal,
 pemerintahan & "jalur belakang" (suap/korupsi), hingga penyelamatan investor.
 Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 
-🔗 **Demo:** **https://webgame.fachryxyf.com/konglomerat**
-📖 **Status:** `v1.0.0-beta` — fitur lengkap, single-device (hotseat) vs AI.
+**Demo:** **https://webgame.fachryxyf.com/konglomerat**
+**Status:** `v1.0.0-beta` — fitur lengkap, single-device (hotseat) vs AI.
 
 ![Konglomerat — papan permainan](docs/screenshots/board.png)
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/government.png" alt="Menu Pemerintahan & korupsi" /></td>
-    <td width="50%"><img src="docs/screenshots/gate.png" alt="Halaman akses terbatas" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Pemerintahan & "jalur belakang" (suap, lobi, gelapkan, manipulasi lelang) dengan meter kecurigaan</sub></td>
-    <td align="center"><sub>Gerbang kawasan privat di root domain</sub></td>
-  </tr>
-</table>
+![Pemerintahan & cara curang](docs/screenshots/government.png)
+
+<sub>Menu Pemerintahan & "jalur belakang" — suap, lobi, gelapkan pembukuan, manipulasi lelang — dengan meter kecurigaan (heat).</sub>
 
 ---
 
-## ✨ Fitur
+## Fitur
 
 **Inti permainan**
 - Papan 40 petak (8 grup warna, 4 transit, 2 utilitas, pajak, sudut), dadu 3D beranimasi, pion berjalan langkah-demi-langkah, aturan dadu kembar & penjara.
@@ -33,17 +26,17 @@ Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 - 3 tingkat **AI** (Mudah / Menengah / Sulit) dengan strategi beli, lelang, bangun, gadai & trade yang berbeda; AI bisa bertransaksi antar sesama AI.
 
 **Sistem ekonomi**
-- 🏦 **Bank & pinjaman** — pinjam dengan tenor & bunga mengambang (ikut suku bunga acuan), plafon kredit berbasis kekayaan, cicilan otomatis, pelunasan dini.
-- 📈 **Tahun Fiskal & kebijakan moneter otonom** — tiap ~12 ronde bank sentral & pemerintah menyetel suku bunga + regulasi (kontrol sewa, pajak properti) sesuai iklim ekonomi.
-- ⚖️ **Pemerintahan & "cara curang"** — suap sipir, lobi regulasi, gelapkan pembukuan, manipulasi lelang. Tiap aksi punya **tingkat kecurigaan (heat)**; makin sering & ceroboh, makin besar risiko denda/pidana.
-- ⛓️ **Penjara berdampak** — jaminan naik bertahap & ikut kekayaan, sewa anjlok saat dipenjara, aktivitas dibekukan, plus catatan kriminal.
-- 💀 **Bangkrut & penyelamatan investor** — pakta bagi-hasil sewa sampai modal investor kembali 1,5×.
-- 🎴 Event acak berperingkat (Reguler → Mythos), kartu **Kesempatan** & **Dana Umum**.
+- **Bank & pinjaman** — pinjam dengan tenor & bunga mengambang (ikut suku bunga acuan), plafon kredit berbasis kekayaan, cicilan otomatis, pelunasan dini.
+- **Tahun Fiskal & kebijakan moneter otonom** — tiap ~12 ronde bank sentral & pemerintah menyetel suku bunga + regulasi (kontrol sewa, pajak properti) sesuai iklim ekonomi.
+- **Pemerintahan & "cara curang"** — suap sipir, lobi regulasi, gelapkan pembukuan, manipulasi lelang. Tiap aksi punya **tingkat kecurigaan (heat)**; makin sering & ceroboh, makin besar risiko denda/pidana.
+- **Penjara berdampak** — jaminan naik bertahap & ikut kekayaan, sewa anjlok saat dipenjara, aktivitas dibekukan, plus catatan kriminal.
+- **Bangkrut & penyelamatan investor** — pakta bagi-hasil sewa sampai modal investor kembali 1,5×.
+- Event acak berperingkat (Reguler → Mythos), kartu **Kesempatan** & **Dana Umum**.
 
 **Lain-lain**
 - Buku panduan lengkap dalam game, katalog properti & kartu, simpan-otomatis (resume setelah refresh), kontrol keyboard (Spasi).
 
-## 🛠️ Teknologi
+## Teknologi
 
 | | |
 |---|---|
@@ -54,13 +47,13 @@ Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 | Validasi | Zod |
 | Runtime/PM | Bun |
 
-## 🧱 Arsitektur (ringkas)
+## Arsitektur (ringkas)
 
 - **Engine terisolasi** di `src/lib/monopoly/` — modul pure (`bank.ts`, `government.ts`, `ai.ts`, `events.ts`, `fiscal.ts`, `utils.ts`) + store Zustand (`gameStore.ts`).
 - **Lapisan keamanan (siap server-authoritative):** RNG yang dapat di-seed (`rng.ts`), kosakata `Intent` (`intents.ts`), validasi berlapis `parseIntent` (zod) → `validateIntent` (aturan) → `checkInvariants`, semuanya lewat satu gerbang `dispatch`.
 - Rencana keamanan & jalur multiplayer didokumentasikan di [`docs/SECURITY_AND_MULTIPLAYER_PLAN.md`](docs/SECURITY_AND_MULTIPLAYER_PLAN.md) dan [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md).
 
-## 🚀 Menjalankan lokal
+## Menjalankan lokal
 
 ```bash
 # prasyarat: Bun (https://bun.sh)
@@ -77,18 +70,18 @@ bun run start        # serve di port 3737
 
 > Desktop-only by design — papan butuh layar lebar; di layar kecil tampil halaman peringatan.
 
-## ☁️ Deploy
+## Deploy
 
 Panduan deploy ke VM (mis. Google Cloud, Debian) — reverse proxy Caddy + HTTPS
 otomatis + systemd — ada di **[`docs/DEPLOY.md`](docs/DEPLOY.md)**, lengkap dengan
 `deploy/Caddyfile`, `deploy/konglomerat.service`, dan `deploy/deploy.sh`.
 
-## 🗺️ Roadmap
+## Roadmap
 
 `v1` beta sekarang: single-device vs AI. Berikutnya (lihat [LAUNCH_ROADMAP](docs/LAUNCH_ROADMAP.md)):
 multiplayer real-time (server-authoritative + WebSocket + Redis), akun & match history, mobile responsif.
 
-## 📄 Lisensi
+## Lisensi
 
 © 2026 Fachry Fauzan Syafei. Hak cipta dilindungi (proprietary). Nama, desain
 papan, dan teks adalah karya orisinal — **bukan** afiliasi/produk Hasbro. Mekanik

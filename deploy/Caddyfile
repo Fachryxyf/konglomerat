@@ -3,9 +3,9 @@
 #   sudo systemctl reload caddy
 #
 # --- Dengan domain (REKOMENDASI: HTTPS otomatis) ---
-# A record: webgame  →  34.34.217.3 (IP statis VM). Caddy urus HTTPS otomatis.
-# Next melayani / (gate) dan /konglomerat (game) dari satu app, jadi cukup satu blok.
-webgame.fachryxyf.com {
+# Ganti example.com dengan domainmu (A record → IP statis VM). Caddy urus HTTPS.
+# Game tersaji di /konglomerat.
+example.com {
     encode zstd gzip
     reverse_proxy 127.0.0.1:3737
 }

@@ -19,4 +19,4 @@ sudo systemctl restart konglomerat
 sleep 1
 sudo systemctl --no-pager status konglomerat | head -n 8
 
-echo "✅ Deploy selesai."
+echo "Deploy selesai."

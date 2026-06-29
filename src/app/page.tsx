@@ -1,59 +1,45 @@
 import type { Metadata } from "next";
-import { Fingerprint, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Akses Terbatas — webgame",
-  description: "Kawasan privat. Bukan untuk sembarang orang.",
+  title: "Akses Terbatas",
+  description: "Kawasan privat.",
   robots: { index: false, follow: false },
 };
 
-// Root "gate" for webgame.fachryxyf.com — an atmospheric restricted-access page.
-// The actual app lives at /konglomerat; this page intentionally offers no link.
+function LockMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+// Root landing for the private hub. Deliberately minimal & elegant — no link in,
+// no drama. The game lives at its own path; those who have it know the way.
 export default function Gate() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#04070a] text-zinc-200 flex items-center justify-center px-6 selection:bg-emerald-500/30">
-      {/* animated backdrop */}
-      <div className="gate-grid" aria-hidden />
-      <div className="gate-orb gate-float-a" style={{ width: 620, height: 620, top: "-18%", left: "-12%", background: "radial-gradient(circle, rgba(5,150,105,0.45), transparent 65%)" }} aria-hidden />
-      <div className="gate-orb gate-float-b" style={{ width: 560, height: 560, bottom: "-20%", right: "-10%", background: "radial-gradient(circle, rgba(13,148,136,0.40), transparent 65%)" }} aria-hidden />
-      <div className="gate-scanline" aria-hidden />
-      {/* vignette */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.7) 100%)" }} aria-hidden />
+    <main className="relative min-h-screen overflow-hidden bg-[#0a0a0b] text-zinc-300">
+      {/* a single, restrained glow */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(58% 46% at 50% 16%, rgba(16,185,129,0.10), transparent 72%)" }} aria-hidden />
+      {/* thin frame lines for a composed, desktop feel */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.06]" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/[0.06]" aria-hidden />
 
-      <div className="relative z-10 w-full max-w-lg text-center">
-        {/* emblem */}
-        <div className="mx-auto mb-8 relative grid place-items-center w-24 h-24 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 gate-emblem">
-          <Fingerprint className="w-11 h-11 text-emerald-400" strokeWidth={1.4} />
-          <span className="gate-emblem-scan absolute left-3 right-3 h-[2px] rounded-full bg-emerald-300/80 shadow-[0_0_12px_2px_rgba(52,211,153,0.7)]" aria-hidden />
-        </div>
+      {/* corner labels frame the wide canvas */}
+      <div className="absolute top-6 left-7 inline-flex items-center gap-2 text-[11px] tracking-[0.25em] text-zinc-500">
+        <LockMark /> PRIVAT
+      </div>
+      <div className="absolute bottom-6 right-7 text-[11px] tracking-[0.22em] text-zinc-600 font-mono">FACHRYXYF</div>
 
-        <p className="font-mono text-[11px] tracking-[0.35em] text-emerald-400/70 mb-3">KAWASAN PRIVAT</p>
-
-        <h1 className="gate-flicker font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white">
-          AKSES TERBATAS
-        </h1>
-
-        <p className="mt-5 text-sm sm:text-base leading-relaxed text-zinc-400">
-          Ini bukan tempat yang bisa dimasuki sembarang orang.
-          <br className="hidden sm:block" />
-          Kalau kamu sampai di sini tanpa tahu jalannya — berarti memang belum waktunya.
-          <span className="text-zinc-300"> Yang punya akses, sudah tahu ke mana harus pergi.</span>
+      {/* centered content */}
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gate-fade">
+        <p className="text-[11px] tracking-[0.45em] text-emerald-500/70 mb-7">KAWASAN PRIVAT</p>
+        <h1 className="text-4xl sm:text-6xl font-light tracking-tight text-zinc-100">Akses Terbatas</h1>
+        <div className="mt-9 h-px w-12 bg-emerald-500/40" />
+        <p className="mt-9 max-w-md text-sm sm:text-[15px] leading-relaxed text-zinc-500">
+          Halaman ini tidak ditujukan untuk publik. Tanpa tautan langsung, ini memang bukan untuk Anda.
         </p>
-
-        {/* terminal line */}
-        <div className="mt-8 inline-flex items-center font-mono text-[13px] text-emerald-300/90 bg-black/40 border border-emerald-500/20 rounded-md px-3 py-2">
-          <span className="text-emerald-500/70 mr-1">&gt;</span>
-          <span className="gate-type">memverifikasi identitas…</span>
-          <span className="gate-caret" aria-hidden />
-        </div>
-
-        <div className="mt-5 gate-deny inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-rose-400/90 border border-rose-500/30 bg-rose-500/5 rounded-full px-3 py-1.5">
-          <Lock className="w-3.5 h-3.5" /> Akses ditolak
-        </div>
-
-        <footer className="mt-12 text-[11px] font-mono text-zinc-600">
-          webgame.fachryxyf.com — kawasan privat
-        </footer>
       </div>
     </main>
   );

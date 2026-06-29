@@ -71,7 +71,7 @@ Multiplayer = **3 submasalah**, bukan satu:
 - [ ] Guest ID stabil (minimal) → idealnya auth (OAuth/email).
 - [ ] Database: room, user, **match history** pindah dari localStorage ke **Postgres** (+ Redis untuk state live).
 
-### Fase C — IP / Trademark (blocker #1 untuk launch publik) — ✅ sebagian besar selesai
+### Fase C — IP / Trademark (blocker #1 untuk launch publik) — sebagian besar selesai
 "Monopoly" merek dagang Hasbro; papan klasik (nama petak, warna, kartu) dilindungi.
 Demo/porto aman; **komersil/publik wajib rebrand.** Banyak proyek mati di sini.
 - [x] **Nama produk baru** — "KONGLOMERAT" (terpusat di `theme.ts`).
