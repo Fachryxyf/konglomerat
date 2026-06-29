@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute base so OG/Twitter image URLs resolve to the public domain (not localhost).
+  metadataBase: new URL("https://webgame.fachryxyf.com"),
   title: "Konglomerat — Permainan Properti & Ekonomi",
   description: "Bangun imperium properti & ekonomi di Kota Raya. Permainan papan strategi ekonomi 2-8 pemain (human & AI), dibangun dengan Next.js + TypeScript.",
   keywords: ["Konglomerat", "board game", "permainan papan", "strategi ekonomi", "properti", "Next.js", "TypeScript", "React"],
