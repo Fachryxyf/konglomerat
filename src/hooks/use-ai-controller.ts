@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useGame } from "@/lib/monopoly/gameStore";
-import { aiShouldBuyProperty, aiJailDecision, aiShouldBuild, aiShouldMortgage, aiProposeTrade, aiShouldAuctionOwn, aiBankDecision, aiGovernmentDecision } from "@/lib/monopoly/ai";
+import { aiShouldBuyProperty, aiJailDecision, aiShouldBuild, aiShouldMortgage, aiShouldUnmortgage, aiProposeTrade, aiShouldAuctionOwn, aiBankDecision, aiGovernmentDecision } from "@/lib/monopoly/ai";
 import { getSpace } from "@/lib/monopoly/utils";
 import { getPrice } from "@/lib/monopoly/boardData";
 
@@ -34,6 +34,7 @@ export function useAIController() {
   const auctionAttemptedTurnRef = useRef<number>(-1);
   const bankAttemptedTurnRef = useRef<number>(-1);
   const govAttemptedTurnRef = useRef<number>(-1);
+  const unmortgageAttemptedTurnRef = useRef<number>(-1);
 
   useEffect(() => {
     // Clear any existing timers
@@ -136,6 +137,17 @@ export function useAIController() {
       } else {
         const curTurn = useGame.getState().turn;
         let proposed = false;
+
+        // 1b) Redeem a mortgaged property when comfortably flush (restores rent
+        //     income). Without this the AI mortgages but never buys back.
+        if (unmortgageAttemptedTurnRef.current !== curTurn) {
+          unmortgageAttemptedTurnRef.current = curTurn;
+          const redeemIdx = aiShouldUnmortgage(useGame.getState(), player.id);
+          if (redeemIdx !== null) {
+            addTimer(() => useGame.getState().unmortgageProperty(redeemIdx), 1500);
+            proposed = true;
+          }
+        }
 
         // 2a) If badly cash-strapped, auction a spare property (once per turn).
         if (auctionAttemptedTurnRef.current !== curTurn) {

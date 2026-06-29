@@ -1,7 +1,7 @@
 import type { AIDifficulty, GameState } from "./types";
 import { rng } from "./rng";
 import { getSpace, hasMonopoly, getColorSetSpaces, countRailroads } from "./utils";
-import { COLOR_SETS, getPrice } from "./boardData";
+import { COLOR_SETS, getPrice, getMortgageValue } from "./boardData";
 import { creditLimit, totalDebt, loanInterestRate, LOAN_TERMS } from "./bank";
 import { BRIBE_GUARD_COST, LOBBY_COST } from "./government";
 
@@ -519,6 +519,37 @@ export function aiShouldMortgage(state: GameState, playerId: number): number | n
     return idx;
   }
   return null;
+}
+
+// ===== Unmortgage decision =====
+// Counterpart to aiShouldMortgage. Without this the AI mortgages to raise cash but
+// NEVER buys the property back — leaving it dead (no rent) forever. Redeems a
+// mortgaged property when comfortably flush, keeping a reserve; prioritizes pieces
+// that re-enable a monopoly's rent, then the most valuable.
+export function aiShouldUnmortgage(state: GameState, playerId: number): number | null {
+  const me = state.players[playerId];
+  if (!me || me.bankrupt) return null;
+  // Keep a cushion (scaled by difficulty + opponents' rent threat) before redeeming.
+  const reserve = (me.difficulty === "HARD" ? 120 : me.difficulty === "EASY" ? 170 : 145)
+    + Math.floor(opponentThreat(state, playerId) * 0.4);
+
+  let best: number | null = null;
+  let bestScore = -1;
+  for (const idx of me.properties) {
+    const o = state.ownership[idx];
+    if (!o || !o.mortgaged) continue;
+    const space = getSpace(idx);
+    const cost = Math.ceil(getMortgageValue(space) * 1.1); // redeem = mortgage value + 10%
+    if (me.balance - cost <= reserve) continue; // only when it leaves a healthy cushion
+    let score = getPrice(space);
+    // Restoring a tile in a fully-owned colour set re-enables real rent → top priority.
+    if (space.type === "PROPERTY") {
+      const { total, ownedInSet } = setInfo(state, playerId, idx);
+      if (ownedInSet === total) score += 1000;
+    }
+    if (score > bestScore) { bestScore = score; best = idx; }
+  }
+  return best;
 }
 
 // ===== Auctioning own property =====
