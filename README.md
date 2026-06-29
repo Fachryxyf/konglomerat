@@ -7,11 +7,21 @@ dengan ekonomi yang hidup: bank sentral, pinjaman berbunga, tahun fiskal,
 pemerintahan & "jalur belakang" (suap/korupsi), hingga penyelamatan investor.
 Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 
-🔗 **Demo:** _(menyusul — di-deploy di VM)_
+🔗 **Demo:** **https://webgame.fachryxyf.com/konglomerat**
 📖 **Status:** `v1.0.0-beta` — fitur lengkap, single-device (hotseat) vs AI.
 
-<!-- TODO: tambahkan screenshot / GIF gameplay di sini -->
-<!-- ![Konglomerat](docs/screenshot.png) -->
+![Konglomerat — papan permainan](docs/screenshots/board.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/government.png" alt="Menu Pemerintahan & korupsi" /></td>
+    <td width="50%"><img src="docs/screenshots/gate.png" alt="Halaman akses terbatas" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Pemerintahan & "jalur belakang" (suap, lobi, gelapkan, manipulasi lelang) dengan meter kecurigaan</sub></td>
+    <td align="center"><sub>Gerbang kawasan privat di root domain</sub></td>
+  </tr>
+</table>
 
 ---
 

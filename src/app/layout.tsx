@@ -25,11 +25,13 @@ export const metadata: Metadata = {
     description: "Bangun imperium properti & ekonomi di Kota Raya — 2-8 pemain, mix human & AI.",
     siteName: "Konglomerat",
     type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Konglomerat" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Konglomerat",
     description: "Bangun imperium properti & ekonomi di Kota Raya — 2-8 pemain, mix human & AI.",
+    images: ["/og.png"],
   },
 };
 
