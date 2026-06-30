@@ -25,7 +25,6 @@ export function useAIController() {
   const buildHouse = useGame((s) => s.buildHouse);
   const buildHotel = useGame((s) => s.buildHotel);
   const mortgageProperty = useGame((s) => s.mortgageProperty);
-  const endTurn = useGame((s) => s.endTurn);
   const pendingCard = useGame((s) => s.pendingCard);
   const dismissCard = useGame((s) => s.dismissCard);
 
@@ -66,7 +65,78 @@ export function useAIController() {
           addTimer(() => jailDecision(decision), 2500);
         }
       } else {
-        addTimer(() => rollDice(), 2000);
+        // Manage the estate BEFORE rolling — the only window an AI gets, since the
+        // store auto-ends the turn shortly after the post-move action resolves.
+        // One action per render (each mutates state → re-render → next action);
+        // building repeats until done; once nothing's left, roll the dice.
+        const curTurn = useGame.getState().turn;
+        const MANAGE_DELAY = 1100;
+
+        // 1) Bank: borrow to develop / stay liquid, or repay early when flush.
+        if (bankAttemptedTurnRef.current !== curTurn) {
+          bankAttemptedTurnRef.current = curTurn;
+          const bank = aiBankDecision(useGame.getState(), player.id);
+          if (bank) {
+            addTimer(() => {
+              if (bank.type === "BORROW") useGame.getState().takeLoan(player.id, bank.amount, bank.term);
+              else useGame.getState().repayLoan(player.id, bank.loanId);
+            }, MANAGE_DELAY);
+            return;
+          }
+        }
+        // 2) Government "cara curang": lobby for regulation, or cook the books.
+        if (govAttemptedTurnRef.current !== curTurn) {
+          govAttemptedTurnRef.current = curTurn;
+          const gov = aiGovernmentDecision(useGame.getState(), player.id);
+          if (gov && gov.type !== "BRIBE_GUARD") {
+            addTimer(() => {
+              if (gov.type === "LOBBY") useGame.getState().lobbyRegulation(player.id);
+              else if (gov.type === "EVADE") useGame.getState().armEvasion(player.id);
+            }, MANAGE_DELAY);
+            return;
+          }
+        }
+        // 3) Build on monopolies (repeatable — keeps developing until it can't).
+        const buildAction = aiShouldBuild(useGame.getState(), player.id);
+        if (buildAction) {
+          addTimer(() => {
+            if (buildAction.action === "HOUSE") buildHouse(buildAction.spaceIndex, buildAction.count);
+            else buildHotel(buildAction.spaceIndex);
+          }, MANAGE_DELAY);
+          return;
+        }
+        // 4) Redeem a mortgaged property when comfortably flush.
+        if (unmortgageAttemptedTurnRef.current !== curTurn) {
+          unmortgageAttemptedTurnRef.current = curTurn;
+          const redeemIdx = aiShouldUnmortgage(useGame.getState(), player.id);
+          if (redeemIdx !== null) {
+            addTimer(() => useGame.getState().unmortgageProperty(redeemIdx), MANAGE_DELAY);
+            return;
+          }
+        }
+        // 5) Cash-strapped: auction a spare property to other players.
+        if (auctionAttemptedTurnRef.current !== curTurn) {
+          auctionAttemptedTurnRef.current = curTurn;
+          const auctionIdx = aiShouldAuctionOwn(useGame.getState(), player.id);
+          if (auctionIdx !== null) {
+            addTimer(() => useGame.getState().auctionOwnProperty(auctionIdx), MANAGE_DELAY);
+            return;
+          }
+        }
+        // 6) Broker a trade to complete/consolidate a monopoly (tier-scaled).
+        if (tradeAttemptedTurnRef.current !== curTurn) {
+          tradeAttemptedTurnRef.current = curTurn;
+          const tradeGate = player.difficulty === "HARD" ? 0.85 : player.difficulty === "EASY" ? 0.3 : 0.6;
+          if (Math.random() < tradeGate) {
+            const offer = aiProposeTrade(useGame.getState(), player.id);
+            if (offer) {
+              addTimer(() => useGame.getState().proposeTrade(offer), MANAGE_DELAY);
+              return;
+            }
+          }
+        }
+        // Nothing left to manage → roll the dice.
+        addTimer(() => rollDice(), 1300);
       }
     }
 
@@ -100,94 +170,18 @@ export function useAIController() {
       }, 8000);
     }
 
+    // POST_ACTION: the store auto-advances to endTurn shortly after the move
+    // resolves, so the AI does no management here (it manages in WAITING_ROLL,
+    // before rolling — the same window a human gets). A safety net: if a debt
+    // left the AI needing cash, raise it so the turn can settle cleanly.
     if (turnPhase === "POST_ACTION") {
-      // 0) Interact with the bank once per turn: borrow when cash-strapped but
-      //    asset-rich, or repay early when flush. Re-evaluates next render.
-      const curTurnBank = useGame.getState().turn;
-      if (bankAttemptedTurnRef.current !== curTurnBank) {
-        bankAttemptedTurnRef.current = curTurnBank;
-        const bank = aiBankDecision(useGame.getState(), player.id);
-        if (bank) {
-          addTimer(() => {
-            if (bank.type === "BORROW") useGame.getState().takeLoan(player.id, bank.amount, bank.term);
-            else useGame.getState().repayLoan(player.id, bank.loanId);
-          }, 1400);
-          return;
-        }
-      }
-      // 0b) Government "cara curang": lobby for regulation or cook the books.
-      if (bankAttemptedTurnRef.current === curTurnBank) {
-        const gov = aiGovernmentDecision(useGame.getState(), player.id);
-        if (gov && gov.type !== "BRIBE_GUARD" && govAttemptedTurnRef.current !== curTurnBank) {
-          govAttemptedTurnRef.current = curTurnBank;
-          addTimer(() => {
-            if (gov.type === "LOBBY") useGame.getState().lobbyRegulation(player.id);
-            else if (gov.type === "EVADE") useGame.getState().armEvasion(player.id);
-          }, 1400);
-          return;
-        }
-      }
-      // 1) Build if it makes sense (highest priority — develops monopolies).
-      const buildAction = aiShouldBuild(useGame.getState(), player.id);
-      if (buildAction) {
-        addTimer(() => {
-          if (buildAction.action === "HOUSE") buildHouse(buildAction.spaceIndex, buildAction.count);
-          else buildHotel(buildAction.spaceIndex);
-        }, 1500);
-      } else {
-        const curTurn = useGame.getState().turn;
-        let proposed = false;
-
-        // 1b) Redeem a mortgaged property when comfortably flush (restores rent
-        //     income). Without this the AI mortgages but never buys back.
-        if (unmortgageAttemptedTurnRef.current !== curTurn) {
-          unmortgageAttemptedTurnRef.current = curTurn;
-          const redeemIdx = aiShouldUnmortgage(useGame.getState(), player.id);
-          if (redeemIdx !== null) {
-            addTimer(() => useGame.getState().unmortgageProperty(redeemIdx), 1500);
-            proposed = true;
-          }
-        }
-
-        // 2a) If badly cash-strapped, auction a spare property (once per turn).
-        if (auctionAttemptedTurnRef.current !== curTurn) {
-          auctionAttemptedTurnRef.current = curTurn;
-          const auctionIdx = aiShouldAuctionOwn(useGame.getState(), player.id);
-          if (auctionIdx !== null) {
-            addTimer(() => useGame.getState().auctionOwnProperty(auctionIdx), 1500);
-            proposed = true; // wait for the auction to resolve before doing more
-          }
-        }
-
-        // 2b) Occasionally try to broker a trade (once per turn) — e.g. buy the
-        //    last piece it needs for a monopoly from another player (AI or human).
-        if (!proposed && tradeAttemptedTurnRef.current !== curTurn) {
-          tradeAttemptedTurnRef.current = curTurn;
-          // Keep it occasional and deliberate — only ~18% of eligible turns, and
-          // aiProposeTrade only returns something when it can complete a monopoly.
-          if (Math.random() < 0.18) {
-            const offer = aiProposeTrade(useGame.getState(), player.id);
-            if (offer) {
-              addTimer(() => useGame.getState().proposeTrade(offer), 1500);
-              proposed = true;
-            }
-          }
-        }
-        // 3) Otherwise mortgage to raise cash if low, or end the turn.
-        if (!proposed) {
-          const mortgageIdx = aiShouldMortgage(useGame.getState(), player.id);
-          if (mortgageIdx !== null) {
-            addTimer(() => mortgageProperty(mortgageIdx), 1500);
-          } else {
-            addTimer(() => endTurn(), 1500);
-          }
-        }
-      }
+      const mortgageIdx = aiShouldMortgage(useGame.getState(), player.id);
+      if (mortgageIdx !== null) addTimer(() => mortgageProperty(mortgageIdx), 300);
     }
 
     return () => {
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current = [];
     };
-  }, [players, currentPlayerIndex, turnPhase, pendingSpaceAction, pendingCard, pendingTrade, pendingFiscal, pendingRescue, rollDice, buyProperty, declineBuy, jailDecision, buildHouse, buildHotel, mortgageProperty, endTurn, dismissCard]);
+  }, [players, currentPlayerIndex, turnPhase, pendingSpaceAction, pendingCard, pendingTrade, pendingFiscal, pendingRescue, rollDice, buyProperty, declineBuy, jailDecision, buildHouse, buildHotel, mortgageProperty, dismissCard]);
 }

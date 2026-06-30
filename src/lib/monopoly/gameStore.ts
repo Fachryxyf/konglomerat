@@ -2599,9 +2599,11 @@ function aiEvaluateTrade(s: GameState & GameStore, trade: {
     const fromCompletes = !fromBefore && indices.every((i) => fromAfter.has(i));
     if (fromCompletes) {
       const setValue = indices.reduce((sum, i) => sum + getPrice(getSpace(i)), 0);
-      // Mild — a comfortable AI refuses to arm a rival, but a cash-strapped one
-      // (high cashWeight on the offer) will still sell when it needs the money.
-      valueGiven += setValue * 0.4;
+      // How defensive the seller is about arming a rival, by skill: a sharp (Hard)
+      // AI rarely hands over a monopoly, an average (Medium) one is cautious, and a
+      // weak (Easy) one barely cares. A cash-strapped seller relents either way.
+      const armScale = to.difficulty === "EASY" ? 0.15 : to.difficulty === "HARD" ? 1.1 : 0.45;
+      valueGiven += setValue * armScale * (to.balance < 250 ? 0.4 : 1);
     }
   }
 

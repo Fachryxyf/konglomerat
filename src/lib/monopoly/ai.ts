@@ -38,15 +38,11 @@ export function strategicValue(state: GameState, playerId: number, spaceIndex: n
   if (space.type === "UTILITY") return 0.5; // weak asset, never overpay
   if (space.type === "PROPERTY") {
     const { total, ownedInSet, othersOwned } = setInfo(state, playerId, spaceIndex);
-    if (othersOwned === 0) {
-      if (ownedInSet === total - 1) return 1.6; // completes a monopoly → premium
-      if (ownedInSet > 0) return 1.1; // advances an uncontested set
-      return isHotSet((space as { colorSet: string }).colorSet) ? 0.8 : 0.6; // open set
-    }
-    // Contested set: only worth a denial buy when the rival is one tile from a
-    // monopoly; otherwise it's a dead property the AI can never complete.
-    if (ownedInSet === 0 && othersOwned === total - 1) return 0.5;
-    return 0; // dead — skip
+    if (ownedInSet === total - 1 && othersOwned === 0) return 1.6; // completes a monopoly → premium
+    if (ownedInSet > 0) return 1.05; // I have a foothold — worth completing/trading later
+    if (othersOwned === 0) return isHotSet((space as { colorSet: string }).colorSet) ? 0.8 : 0.6; // open set
+    if (othersOwned === total - 1) return 0.5; // deny a near-monopoly
+    return 0.4; // contested but cheap accumulation / trade fodder
   }
   return 0;
 }
@@ -124,43 +120,22 @@ function aiShouldBuyMedium(
   const space = getSpace(spaceIndex);
   const price = getPrice(space);
 
-  // Keep $200 reserve
-  if (player.balance - price < 120) return false;
+  const after = player.balance - price;
+  // Like a normal player, Medium buys most of what it lands on as long as a
+  // sensible reserve remains — that's how sets accumulate toward monopolies.
+  if (space.type === "RAILROAD") return after >= 60;
+  if (space.type === "UTILITY") return after > 250;
 
-  // Always buy railroads (consistent income)
-  if (space.type === "RAILROAD") return true;
-
-  // Buy utilities only with bigger reserve
-  if (space.type === "UTILITY") {
-    return player.balance - price > 300;
-  }
-
-  // For properties: check color set status
   if (space.type === "PROPERTY") {
-    const colorSet = (space as { colorSet: string }).colorSet;
-    const setIndices = COLOR_SETS[colorSet] || [];
-    const ownedInSet = setIndices.filter((idx) => state.ownership[idx]?.ownerId === playerId).length;
-    const othersOwned = setIndices.filter((idx) => {
-      const o = state.ownership[idx];
-      return o && o.ownerId !== null && o.ownerId !== playerId;
-    }).length;
-
-    // If buying completes the set → definitely buy
-    if (ownedInSet === setIndices.length - 1 && othersOwned === 0) return true;
-
-    // If we already own 1+ in set and no one else owns → buy to build toward monopoly
-    if (ownedInSet > 0 && othersOwned === 0) return true;
-
-    // If others own part of set → buy to block their monopoly
-    if (othersOwned > 0 && ownedInSet === 0) {
-      // Only block if affordable
-      return player.balance - price > 300;
-    }
-
-    // Otherwise: buy if price is reasonable relative to balance
-    return price < player.balance * 0.4;
+    const { total, ownedInSet, othersOwned } = setInfo(state, playerId, spaceIndex);
+    // Completing a monopoly: buy even on a thinner wallet.
+    if (othersOwned === 0 && ownedInSet === total - 1) return after >= 40;
+    // Advancing an uncontested set, or a set I already have a foothold in: buy.
+    if (ownedInSet > 0) return after >= 90;
+    // Fresh/contested but affordable: still grab it (denial + future trade fodder),
+    // keeping a normal reserve.
+    return after >= 130;
   }
-
   return false;
 }
 
@@ -179,41 +154,31 @@ function aiShouldBuyHard(
   const price = getPrice(space);
   const after = player.balance - price;
   const reserve = hardReserve(state, playerId);
-  const value = strategicValue(state, playerId, spaceIndex);
-
-  // Worthless here (dead contested set, weak utility with no money) → skip.
-  if (value <= 0) return false;
 
   if (space.type === "PROPERTY") {
     const { total, ownedInSet, othersOwned } = setInfo(state, playerId, spaceIndex);
 
     // Completing a monopoly is the whole game — take it even on a thin wallet
-    // (it can mortgage/sell elsewhere afterwards), keeping only a tiny buffer.
+    // (it can mortgage/sell/borrow afterwards), keeping only a tiny buffer.
     if (othersOwned === 0 && ownedInSet === total - 1) return after > -reserve * 0.4;
-
-    // Advancing an uncontested set: buy with a modest cushion.
-    if (othersOwned === 0 && ownedInSet > 0) return after > reserve * 0.6;
-
-    // A denial buy against a rival one tile from a monopoly: only when flush.
-    if (othersOwned === total - 1 && ownedInSet === 0) return after > reserve + 80;
-
-    // A fresh, open set: worth it for high-traffic colours, pickier otherwise.
-    if (othersOwned === 0 && ownedInSet === 0) {
-      const need = isHotSet((space as { colorSet: string }).colorSet) ? reserve : reserve + 50;
-      return after > need;
-    }
-    return false;
+    // Already have a foothold in this set → keep stacking it cheaply.
+    if (ownedInSet > 0) return after > reserve * 0.4;
+    // Fresh or contested but unowned-by-me: Hard land-grabs broadly so it owns
+    // trade leverage and denies rivals. Hot sets it'll stretch for; others need a
+    // fuller cushion. Even contested sets are worth holding (future swaps).
+    const need = isHotSet((space as { colorSet: string }).colorSet) ? reserve * 0.6 : reserve;
+    return after > need;
   }
 
   if (space.type === "RAILROAD") {
     // Railroads compound; get keener as the set grows, but still keep a cushion.
     const owned = countRailroads(state, playerId);
-    return after > reserve - owned * 25;
+    return after > reserve * 0.5 - owned * 25;
   }
 
   if (space.type === "UTILITY") {
     // Low priority — only when comfortably ahead.
-    return after > reserve + 60;
+    return after > reserve + 40;
   }
 
   return false;
@@ -530,7 +495,7 @@ export function aiShouldUnmortgage(state: GameState, playerId: number): number |
   const me = state.players[playerId];
   if (!me || me.bankrupt) return null;
   // Keep a cushion (scaled by difficulty + opponents' rent threat) before redeeming.
-  const reserve = (me.difficulty === "HARD" ? 120 : me.difficulty === "EASY" ? 170 : 145)
+  const reserve = (me.difficulty === "HARD" ? 90 : me.difficulty === "EASY" ? 150 : 120)
     + Math.floor(opponentThreat(state, playerId) * 0.4);
 
   let best: number | null = null;
@@ -614,28 +579,62 @@ export function aiBankDecision(state: GameState, playerId: number): AiBankDecisi
   if (!me || me.bankrupt) return null;
   const loans = me.loans ?? [];
   const debt = totalDebt(loans);
+  const net = aiNetWorth(state, playerId);
+  const limit = creditLimit(net, debt);
+  const overLeveraged = debt > net * 0.45;
+  const rate = loanInterestRate(state.centralRate);
+  const rateOk = rate < (me.difficulty === "HARD" ? 0.13 : me.difficulty === "EASY" ? 0.09 : 0.11);
 
   // Repay early when comfortably cash-rich relative to the debt.
   if (loans.length > 0 && me.balance > debt + 300) {
     const costliest = loans.reduce((a, b) => (b.balance > a.balance ? b : a));
     return { type: "REPAY", loanId: costliest.id };
   }
+  if (overLeveraged || !rateOk || limit < 100) return null;
 
-  // Borrow only when short on cash but holding assets, with capacity to spare.
-  const net = aiNetWorth(state, playerId);
-  const limit = creditLimit(net, debt);
+  // 1) BORROW TO DEVELOP — the most important use of credit. If the AI holds a
+  //    monopoly it could build on but can't comfortably afford the next house, it
+  //    leverages up so houses/hotels actually get built (this is what makes loans
+  //    *and* development visible in real games).
+  const buildNeed = buildableMonopolyCost(state, playerId);
+  if (buildNeed > 0) {
+    const threat = opponentThreat(state, playerId);
+    const target = buildNeed + 50 + threat; // cash to build a couple comfortably
+    const buildGate = me.difficulty === "HARD" ? 0.92 : me.difficulty === "EASY" ? 0.4 : 0.7;
+    if (me.balance < target && rng() < buildGate) {
+      const amount = Math.min(limit, Math.max(120, target - me.balance + 60));
+      if (amount >= 100) return { type: "BORROW", amount, term: LOAN_TERMS[1] };
+    }
+  }
+
+  // 2) BORROW TO STAY LIQUID — short on cash but asset-rich, so it can keep
+  //    buying / paying rent without fire-selling.
   const lowCash = me.balance < (me.difficulty === "HARD" ? 160 : me.difficulty === "EASY" ? 90 : 120);
-  const overLeveraged = debt > net * 0.4;
-  const rate = loanInterestRate(state.centralRate);
-  const rateOk = rate < (me.difficulty === "HARD" ? 0.12 : 0.1); // skip when bunga too steep
-  const wantsCash = me.properties.length >= 1; // has things to build/develop
+  const wantsCash = me.properties.length >= 1;
   const gate = me.difficulty === "EASY" ? 0.4 : me.difficulty === "HARD" ? 0.8 : 0.6;
-  if (lowCash && wantsCash && !overLeveraged && rateOk && limit >= 100 && rng() < gate) {
+  if (lowCash && wantsCash && rng() < gate) {
     const amount = Math.min(limit, me.difficulty === "HARD" ? 260 : 180);
-    const term = LOAN_TERMS[1]; // 5 rounds
-    if (amount >= 100) return { type: "BORROW", amount, term };
+    if (amount >= 100) return { type: "BORROW", amount, term: LOAN_TERMS[1] };
   }
   return null;
+}
+
+// Cheapest next-house cost on a monopoly the AI could still develop (0 if it has
+// no buildable monopoly). Drives "borrow to build" so credit funds development.
+function buildableMonopolyCost(state: GameState, playerId: number): number {
+  const me = state.players[playerId];
+  if (!me) return 0;
+  let cheapest = 0;
+  for (const idx of me.properties) {
+    const space = getSpace(idx);
+    if (space.type !== "PROPERTY") continue;
+    if (!hasMonopoly(state, playerId, idx)) continue;
+    const b = state.buildings[idx] || { houses: 0, hotel: false };
+    if (b.hotel) continue; // fully developed
+    const hp = (space as { housePrice: number }).housePrice;
+    if (cheapest === 0 || hp < cheapest) cheapest = hp;
+  }
+  return cheapest;
 }
 
 // ===== Government / corruption =====
@@ -652,23 +651,25 @@ export function aiGovernmentDecision(state: GameState, playerId: number): AiGovD
   const heatCeil = me.difficulty === "HARD" ? 55 : me.difficulty === "EASY" ? 30 : 42;
   if (heat >= heatCeil) return null; // lie low when already suspected
 
-  // In jail: bribe the guard out when it's wealthy enough (and cheaper than a
-  // repeat-offender bail), rather than waste turns.
+  // In jail: bribe the guard out when it can afford it — repeat offenders face
+  // steep bail, so the bribe is often the cheaper, faster way out.
   if (me.inJail) {
-    if (me.balance > BRIBE_GUARD_COST + 150 && me.jailCount >= 1 && rng() < 0.4 * boldness) {
+    if (me.balance > BRIBE_GUARD_COST + 120 && rng() < 0.5 * boldness) {
       return { type: "BRIBE_GUARD" };
     }
     return null;
   }
 
-  // Dominant, cash-comfortable players lobby for favourable regulation.
-  const mostProps = Math.max(...state.players.filter((p) => !p.bankrupt).map((p) => p.properties.length));
-  if (!me.lobbyActive && me.properties.length >= 4 && me.properties.length === mostProps && me.balance > LOBBY_COST + 200 && rng() < 0.15 * boldness) {
+  // Property-heavy, cash-comfortable players lobby for favourable regulation
+  // (tax break + rent boost). Hard does this routinely; Easy only rarely.
+  if (!me.lobbyActive && me.properties.length >= 3 && me.balance > LOBBY_COST + 150 && rng() < 0.3 * boldness) {
     return { type: "LOBBY" };
   }
 
-  // Cash-strapped players cook the books on their next rent.
-  if (!me.evadeNextRent && me.balance < 130 && me.properties.length >= 1 && rng() < 0.2 * boldness) {
+  // Cook the books on the next rent to save cash — opportunistic when not flush.
+  // Hard arms this often (it expects to pay rent); Easy dabbles.
+  const evadeCeil = me.difficulty === "HARD" ? 320 : me.difficulty === "EASY" ? 110 : 200;
+  if (!me.evadeNextRent && me.balance < evadeCeil && me.properties.length >= 1 && rng() < 0.3 * boldness) {
     return { type: "EVADE" };
   }
   return null;
@@ -740,13 +741,53 @@ export function aiProposeTrade(state: GameState, playerId: number): AiTradeOffer
     }
   }
 
-  // Strategy 2 — buy the missing piece for cash (needs a cash buffer).
-  if (me.balance >= 120) {
+  // Strategy 3 — CONSOLIDATION (the key to monopolies in a 4-player game, where
+  // sets fragment evenly). In any set where I already hold a foothold and exactly
+  // one rival holds the rest of the owned pieces (the remainder being unowned, so
+  // I can finish by landing), offer cash to buy that rival out. This is how a
+  // split board gets concentrated into monopolies over time.
+  const cashFloor3 = me.difficulty === "HARD" ? 90 : 120;
+  const premium3 = me.difficulty === "HARD" ? 1.7 : me.difficulty === "EASY" ? 1.15 : 1.4;
+  const reserve3 = me.difficulty === "HARD" ? 40 : 60;
+  if (me.balance >= cashFloor3) {
+    // Prefer high-traffic sets first (Orange/Red/Yellow/LightBlue).
+    const order = Object.entries(COLOR_SETS).sort((a, b) =>
+      (isHotSet(b[0]) ? 1 : 0) - (isHotSet(a[0]) ? 1 : 0));
+    for (const [, indices] of order) {
+      const mine = indices.filter((i) => owner(i) === playerId).length;
+      if (mine < 1) continue;
+      const rivalPieces = indices.filter((i) => { const o = owner(i); return o !== null && o !== playerId; });
+      if (rivalPieces.length === 0) continue;
+      const rid = owner(rivalPieces[0]);
+      if (rid === null || rid === playerId) continue;
+      if (!rivalPieces.every((i) => owner(i) === rid)) continue; // a single rival holds them
+      if (!state.players[rid] || state.players[rid].bankrupt) continue;
+      // Don't try to buy pieces that have buildings (can't be traded anyway).
+      if (rivalPieces.some((i) => { const b = state.buildings[i]; return b && (b.houses > 0 || b.hotel); })) continue;
+      const totalPrice = rivalPieces.reduce((s, i) => s + getPrice(getSpace(i)), 0);
+      const maxOffer = me.balance - reserve3;
+      if (maxOffer < totalPrice) continue;
+      const offer = Math.min(maxOffer, Math.ceil(totalPrice * premium3));
+      return {
+        fromId: playerId, toId: rid,
+        cashFrom: offer, cashTo: 0,
+        propertiesFrom: [], propertiesTo: rivalPieces,
+        goojFrom: 0, goojTo: 0,
+      };
+    }
+  }
+
+  // Strategy 2 — buy the missing piece for cash (needs a cash buffer). Hard pays
+  // a steeper premium and keeps a smaller reserve; it really wants the monopoly.
+  const cashFloor = me.difficulty === "HARD" ? 90 : 120;
+  const premium = me.difficulty === "HARD" ? 1.7 : me.difficulty === "EASY" ? 1.2 : 1.4;
+  const keepReserve = me.difficulty === "HARD" ? 40 : 60;
+  if (me.balance >= cashFloor) {
     for (const need of myNeeds) {
       const price = getPrice(getSpace(need.piece));
-      const maxOffer = me.balance - 60; // keep a $60 reserve
+      const maxOffer = me.balance - keepReserve;
       if (maxOffer < price) continue;
-      const offer = Math.min(maxOffer, Math.ceil(price * 1.4)); // premium up to 1.4×
+      const offer = Math.min(maxOffer, Math.ceil(price * premium));
       return {
         fromId: playerId, toId: need.ownerId,
         cashFrom: offer, cashTo: 0,
