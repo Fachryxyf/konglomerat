@@ -14,7 +14,7 @@ After=network.target
 [Service]
 Type=simple
 User=__USER__
-WorkingDirectory=/home/__USER__/game-monopoly
+WorkingDirectory=/home/__USER__/konglomerat
 Environment=NODE_ENV=production
 Environment=PORT=3737
 Environment=HOSTNAME=127.0.0.1

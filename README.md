@@ -1,6 +1,20 @@
 # Konglomerat
 
+[![Live demo](https://img.shields.io/badge/demo-konglomerat-0f766e?logo=vercel&logoColor=white)](https://webgame.fachryxyf.com/konglomerat)
+[![Release](https://img.shields.io/github/v/release/Fachryxyf/konglomerat?include_prereleases&sort=semver)](https://github.com/Fachryxyf/konglomerat/releases)
+[![Last commit](https://img.shields.io/github/last-commit/Fachryxyf/konglomerat)](https://github.com/Fachryxyf/konglomerat/commits/main)
+[![Issues](https://img.shields.io/github/issues/Fachryxyf/konglomerat)](https://github.com/Fachryxyf/konglomerat/issues)
+[![Top language](https://img.shields.io/github/languages/top/Fachryxyf/konglomerat)](https://github.com/Fachryxyf/konglomerat)
+[![License](https://img.shields.io/badge/license-proprietary-red)](#lisensi)
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Zustand](https://img.shields.io/badge/state-Zustand-2f2f2f)](https://zustand-demo.pmnd.rs)
+[![Bun](https://img.shields.io/badge/runtime-Bun-000000?logo=bun&logoColor=white)](https://bun.sh)
+
 > Bangun imperium properti & ekonomi di kota fiktif **Kota Raya**.
+
 
 Permainan papan strategi ekonomi untuk **2–8 pemain** (campuran manusia & AI),
 dengan ekonomi yang hidup: bank sentral, pinjaman berbunga, tahun fiskal,

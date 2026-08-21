@@ -33,8 +33,8 @@ bun --version
 ## 3. Ambil kode & build
 ```bash
 cd ~
-git clone https://github.com/Fachryxyf/game-monopoly.git
-cd game-monopoly
+git clone https://github.com/Fachryxyf/konglomerat.git
+cd konglomerat
 bun install --frozen-lockfile
 bun run build           # next build (standalone) + salin static/public
 ```
@@ -83,7 +83,7 @@ Buka `https://example.com` (atau `http://IP_VM`).
 
 ## Update / redeploy (sesudah push baru ke GitHub)
 ```bash
-cd ~/game-monopoly
+cd ~/konglomerat
 bash deploy/deploy.sh        # git pull → install → build → restart
 ```
 
