@@ -1,8 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <rect width="32" height="32" rx="7" fill="#0b0b0d"/>
-  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#10b981" stroke-opacity="0.22"/>
-  <g transform="translate(4 4)" stroke="#34d399" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <rect x="3" y="10.5" width="18" height="10.5" rx="2.2"/>
-    <path d="M7 10.5V7a5 5 0 0 1 10 0v3.5"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#10b981" stroke-opacity="0.25"/>
+  <!-- ascending skyline: the Konglomerat brand glyph, solid so it stays legible at 16px -->
+  <g fill="#34d399">
+    <rect x="6" y="17" width="5" height="9" rx="1"/>
+    <rect x="12.5" y="9" width="6" height="17" rx="1"/>
+    <rect x="20" y="14" width="5" height="12" rx="1"/>
+  </g>
+  <g fill="#0b0b0d">
+    <rect x="14" y="12" width="1.4" height="1.4"/>
+    <rect x="16.1" y="12" width="1.4" height="1.4"/>
+    <rect x="14" y="15" width="1.4" height="1.4"/>
+    <rect x="16.1" y="15" width="1.4" height="1.4"/>
   </g>
 </svg>
