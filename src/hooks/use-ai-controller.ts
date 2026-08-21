@@ -5,6 +5,7 @@ import { useGame } from "@/lib/monopoly/gameStore";
 import { aiShouldBuyProperty, aiJailDecision, aiShouldBuild, aiShouldMortgage, aiShouldUnmortgage, aiProposeTrade, aiShouldAuctionOwn, aiBankDecision, aiGovernmentDecision } from "@/lib/monopoly/ai";
 import { getSpace } from "@/lib/monopoly/utils";
 import { getPrice } from "@/lib/monopoly/boardData";
+import { rng } from "@/lib/monopoly/rng";
 
 /**
  * Hook that runs AI logic automatically based on game phase
@@ -127,7 +128,9 @@ export function useAIController() {
         if (tradeAttemptedTurnRef.current !== curTurn) {
           tradeAttemptedTurnRef.current = curTurn;
           const tradeGate = player.difficulty === "HARD" ? 0.85 : player.difficulty === "EASY" ? 0.3 : 0.6;
-          if (Math.random() < tradeGate) {
+          // Draw through the engine's RNG seam, not Math.random: AI decisions must
+          // be reproducible under a seed (and server-rollable later).
+          if (rng() < tradeGate) {
             const offer = aiProposeTrade(useGame.getState(), player.id);
             if (offer) {
               addTimer(() => useGame.getState().proposeTrade(offer), MANAGE_DELAY);

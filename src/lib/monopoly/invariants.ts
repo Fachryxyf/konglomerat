@@ -13,6 +13,18 @@ export function checkInvariants(state: GameState): string[] {
   const v: string[] = [];
   const s = state;
 
+  // Seat index === player id. The engine addresses players both ways
+  // (`currentPlayerIndex` is a seat, `ownerId`/`playerId` are ids) and `init`
+  // makes them identical. An authoritative server must preserve that, so assert
+  // it rather than leaving it as folklore: if the two ever diverge, ownership and
+  // turn checks would silently target the wrong player.
+  for (let i = 0; i < s.players.length; i++) {
+    if (s.players[i].id !== i) v.push(`kursi ${i} berisi pemain id ${s.players[i].id} (kursi & id harus sama)`);
+  }
+  if (s.players.length > 0 && (s.currentPlayerIndex < 0 || s.currentPlayerIndex >= s.players.length)) {
+    v.push(`currentPlayerIndex di luar jangkauan (${s.currentPlayerIndex})`);
+  }
+
   // Bank building stock can't go negative.
   if (s.bank.houses < 0) v.push(`bank.houses negatif (${s.bank.houses})`);
   if (s.bank.hotels < 0) v.push(`bank.hotels negatif (${s.bank.hotels})`);

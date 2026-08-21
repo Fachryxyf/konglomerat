@@ -1034,7 +1034,7 @@ export const useGame = create<GameStore>()(
       ),
       ownership: {
         ...st.ownership,
-        [spaceIndex]: { ...st.ownership[spaceIndex], ownerId: st.currentPlayerIndex },
+        [spaceIndex]: { ...st.ownership[spaceIndex], ownerId: st.players[st.currentPlayerIndex].id },
       },
       pendingSpaceAction: null,
     }));

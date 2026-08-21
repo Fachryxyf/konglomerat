@@ -188,11 +188,15 @@ Status per implementasi terakhir:
 - [x] **`validateIntent`** — `validateIntent.ts` (pure; rule + invariant aturan + otorisasi giliran/aktor).
 - [x] **Invariant global** — `invariants.ts` (`checkInvariants`/`assertInvariants`: konsistensi ownership dua arah, stok bank, batas bangunan, loan ≥ 0).
 - [x] **Gerbang `dispatch`** di store — `parseIntent → validateIntent → apply → assertInvariants` (dev). Satu pintu yang akan dicerminkan server.
-- [x] Test: 18 test untuk layer ini (RNG, schema, rule, dispatch, invariant) — semua lulus, plus regresi suite lama hijau.
+- [x] **Suite test resmi** — `src/lib/monopoly/intent-gate.test.ts` (gerbang 3 lapis + determinisme RNG) dan `engine.test.ts` (regresi aturan & hotseat). Jalankan `bun run test`.
+- [x] **Kursi === id** dijamin invariant (`checkInvariants`), bukan lagi asumsi tak tertulis: engine mengalamatkan pemain lewat kursi (`currentPlayerIndex`) sekaligus id (`ownerId`), dan server wajib mempertahankan kesamaan itu.
+- [x] **Animasi terikat aktor** — langkah pion mengikat `moverId`, bukan `currentPlayerIndex` yang dibaca ulang tiap tick. Prasyarat sinkronisasi: state antar-tick tak boleh bergantung pada "siapa yang sedang duduk sekarang".
+- [x] **Otorisasi giliran lelang** — `AUCTION_BID` menolak penawar yang bukan sedang bergilir (dulu siapa pun bisa menawar kapan pun).
 
 Sisa (ditunda — masuk Fase 2 saat server dibangun):
 
-- [ ] **Migrasi call-site UI → `dispatch`** (sekarang gerbang sudah ada & teruji, tapi UI masih memanggil action langsung; beta dibiarkan dulu agar tak ada regresi).
-- [ ] **`GameEvent` sebagai output engine** (log/animasi/suara) — bagian dari pemurnian penuh reducer.
-- [ ] **`applyIntent(state, intent, ctx)` murni** (lepas total dari `get/set` Zustand) — dikerjakan saat commit ke server, karena di situlah purity benar-benar diperlukan.
-- [ ] Pindahkan test dari scratchpad jadi suite resmi (saat git diaktifkan / v1).
+- [ ] **Migrasi call-site UI → `dispatch`** (gerbang sudah ada & teruji, tapi UI masih memanggil action langsung: 38 binding `useGame((s) => s.<action>)` + 11 `useGame.getState().<action>()`). Ini pekerjaan mekanis dan bisa dilakukan sekarang tanpa server — hanya berisiko regresi, jadi ditahan sampai suite test menutupi lebih banyak alur.
+- [ ] **`GameEvent` sebagai output engine** (log/animasi/suara) — bagian dari pemurnian penuh reducer. Saat ini efek ditulis langsung via `addLog` + 28 `setTimeout` di dalam store; server tidak boleh punya timer.
+- [ ] **`applyIntent(state, intent, ctx)` murni** (lepas total dari `get/set` Zustand) — penghalang terbesar: orkestrasi giliran memakai `setTimeout` untuk animasi, sehingga transisi bukan fungsi murni. Perlu memisahkan "transisi state" (murni, instan) dari "jadwal presentasi" (client-only).
+- [ ] **AI di luar UI** — `use-ai-controller.ts` masih hook React yang menggerakkan AI (timer + urutan aksi ada di lapisan view). Pengacakannya sudah lewat `rng()` sehingga deterministik, tapi orkestrasinya perlu jadi modul murni agar server bisa menjalankan AI tanpa React.
+- [ ] **`AUCTION_LEAVE` belum ada di kosakata `Intent`** — UI memanggil `auctionLeave` langsung; `AUCTION_PASS` ada tapi dipetakan ke aksi yang sama. Rapikan saat migrasi dispatch.
