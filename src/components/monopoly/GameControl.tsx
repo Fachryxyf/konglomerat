@@ -192,7 +192,11 @@ function Dice3D({ value, rolling, delay }: { value: number; rolling: boolean; de
 
   return (
     <div
-      key={rolling ? `rolling-${value}-${Date.now() % 1000}` : `settled-${value}`}
+      // Key on the PHASE, not on the value: while rolling, the face changes every
+      // 80ms and a value-based key would remount the node each time, restarting
+      // the 0.6s tumble so it never actually plays (it just jittered). One mount
+      // per phase lets the roll run continuously, then settle once.
+      key={rolling ? "rolling" : `settled-${value}`}
       className={cn(
         "w-11 h-11 sm:w-14 sm:h-14 bg-white rounded-lg shadow-xl flex flex-col p-1.5 sm:p-2 preserve-3d",
         rolling ? "animate-dice-roll" : "animate-dice-settle",

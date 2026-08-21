@@ -158,6 +158,7 @@ export function validateIntent(state: ValidatableState, intent: Intent, actorId:
       const a = s.auction;
       if (!a.isActive) return fail("Tidak ada lelang berjalan.");
       if (!a.participants.includes(actorId) || a.passedPlayers.includes(actorId)) return fail("Kamu tidak ikut lelang ini.");
+      if (a.participants[a.turnIndex] !== actorId) return fail("Belum giliranmu menawar.");
       if (intent.amount <= a.currentBid) return fail("Tawaran harus lebih tinggi dari tawaran sekarang.");
       if (intent.amount > actor.balance) return fail("Tawaran melebihi saldo.");
       return ok;

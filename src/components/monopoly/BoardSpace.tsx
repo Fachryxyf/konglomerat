@@ -229,7 +229,10 @@ function PlayerToken({ player, isCurrent, spaceIndex }: { player: { id: number; 
   // Use a state keyed by position so React re-mounts the animated element each time
   // the player arrives at a new space — this re-triggers the CSS animation cleanly.
   const isHere = player.position === spaceIndex;
-  const isMoving = turnPhase === "MOVING" && isCurrent;
+  // Only the token that is actually walking should bob. Previously this keyed off
+  // `isCurrent`, so every token belonging to the player on turn bobbed — and a
+  // token sitting still on another tile bobbed too.
+  const isMoving = turnPhase === "MOVING" && isCurrent && isHere;
 
   // Use position+id as React key so animation re-runs each arrival
   return (

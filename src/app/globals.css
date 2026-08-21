@@ -215,8 +215,10 @@
   }
 }
 
+/* Kept shorter than the engine's 220ms step delay, otherwise each new step
+   remounted the token mid-animation and the landing pop never completed. */
 .animate-step-in {
-  animation: step-in 0.35s ease-out;
+  animation: step-in 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
   z-index: 20;
 }
 
@@ -303,4 +305,25 @@
 
 .scrollbar-thin.dark::-webkit-scrollbar-thumb:hover {
   background-color: rgba(200, 200, 200, 0.5);
+}
+
+/* Respect the OS "reduce motion" setting: keep the game fully playable, drop the
+   decorative movement (dice tumble, token hops, pulsing) that can trigger
+   vestibular discomfort. Opacity fades are retained — they don't move. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-step-in,
+  .animate-bounce-soft,
+  .animate-hop,
+  .animate-dice-roll,
+  .animate-dice-settle,
+  .animate-card-flip,
+  .animate-card-rise,
+  .animate-pulse-button {
+    animation: none !important;
+  }
+  .animate-card-rise,
+  .animate-card-flip {
+    opacity: 1;
+    transform: none;
+  }
 }

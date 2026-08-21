@@ -447,6 +447,11 @@ export const useGame = create<GameStore>()(
     const s = get();
     const player = s.players[s.currentPlayerIndex];
     if (!player) return;
+    // Bind the walk to the player who rolled. Each step lands in a later tick, so
+    // reading `currentPlayerIndex` again would move whoever holds the seat by then
+    // — a real hazard in hotseat play, where a fast click can pass the turn
+    // mid-animation and teleport the next player.
+    const moverId = player.id;
     const startPos = player.position;
     const STEP_DELAY = 220; // ms per step
 
@@ -464,7 +469,10 @@ export const useGame = create<GameStore>()(
     let stepCount = 0;
     const stepOnce = () => {
       const cur = get();
-      const curPlayer = cur.players[cur.currentPlayerIndex];
+      // The seat changed under us (reset, or the turn advanced) — abandon the walk
+      // rather than moving the wrong token.
+      if (cur.players[cur.currentPlayerIndex]?.id !== moverId) return;
+      const curPlayer = cur.players[moverId];
       if (!curPlayer) return;
       const nextPos = ((curPlayer.position + direction) % 40 + 40) % 40;
       let newBalance = curPlayer.balance;
@@ -478,8 +486,8 @@ export const useGame = create<GameStore>()(
         crossedGo = true;
       }
       set((st) => ({
-        players: st.players.map((p, i) =>
-          i === st.currentPlayerIndex ? { ...p, position: nextPos, balance: newBalance } : p,
+        players: st.players.map((p) =>
+          p.id === moverId ? { ...p, position: nextPos, balance: newBalance } : p,
         ),
       }));
       if (crossedGo) {
@@ -491,7 +499,7 @@ export const useGame = create<GameStore>()(
       } else {
         // Final step - now trigger landing
         const finalState = get();
-        const finalPlayer = finalState.players[finalState.currentPlayerIndex];
+        const finalPlayer = finalState.players[moverId];
         const finalPos = finalPlayer.position;
         finalState.addLog(
           "log.move.landed",
@@ -689,6 +697,9 @@ export const useGame = create<GameStore>()(
       onArrive();
       return;
     }
+    // Bind to the mover by id — later animation ticks must not move whoever
+    // happens to hold the seat by then (see executeMove).
+    const moverId = player.id;
     const startPos = player.position;
     // Forward distance to target (always move forward in Monopoly)
     let steps = (target - startPos + 40) % 40;
@@ -703,7 +714,8 @@ export const useGame = create<GameStore>()(
     let stepCount = 0;
     const stepOnce = () => {
       const cur = get();
-      const curPlayer = cur.players[cur.currentPlayerIndex];
+      if (cur.players[cur.currentPlayerIndex]?.id !== moverId) return;
+      const curPlayer = cur.players[moverId];
       if (!curPlayer) return;
       const nextPos = ((curPlayer.position + 1) % 40 + 40) % 40;
       let newBalance = curPlayer.balance;
@@ -716,8 +728,8 @@ export const useGame = create<GameStore>()(
         }
       }
       set((st) => ({
-        players: st.players.map((p, i) =>
-          i === st.currentPlayerIndex ? { ...p, position: nextPos, balance: newBalance } : p,
+        players: st.players.map((p) =>
+          p.id === moverId ? { ...p, position: nextPos, balance: newBalance } : p,
         ),
       }));
       if (crossedGo) {
@@ -1002,7 +1014,11 @@ export const useGame = create<GameStore>()(
   buyProperty: () => {
     const s = get();
     if (s.pendingSpaceAction === null) return;
+    if (s.turnPhase !== "ACTION") return;
     const spaceIndex = s.pendingSpaceAction;
+    // Guard against a double-submit (two clicks / click + Space) buying a space
+    // that has already changed hands this tick.
+    if (s.ownership[spaceIndex]?.ownerId != null) return;
     const space = getSpace(spaceIndex);
     const player = s.players[s.currentPlayerIndex];
     const price = getPrice(space);
@@ -1029,6 +1045,8 @@ export const useGame = create<GameStore>()(
   declineBuy: () => {
     const s = get();
     if (s.pendingSpaceAction === null) return;
+    if (s.turnPhase !== "ACTION") return;
+    if (s.auction.isActive) return;
     const spaceIndex = s.pendingSpaceAction;
     // Start auction
     const participants = s.players.filter((p) => !p.bankrupt).map((p) => p.id);
@@ -1076,6 +1094,11 @@ export const useGame = create<GameStore>()(
     const s = get();
     if (!s.auction.isActive) return;
     const player = s.players[playerId];
+    if (!player || player.bankrupt) return;
+    // Only a live participant may bid, and only when the rotation is on them —
+    // otherwise a stale click (or a tampered call) could snipe out of turn.
+    if (!s.auction.participants.includes(playerId)) return;
+    if (s.auction.participants[s.auction.turnIndex] !== playerId) return;
     if (amount <= s.auction.currentBid) return;
     if (amount > player.balance) return;
 
@@ -1107,13 +1130,21 @@ export const useGame = create<GameStore>()(
   auctionLeave: (playerId) => {
     const s = get();
     if (!s.auction.isActive) return;
+    if (!s.auction.participants.includes(playerId)) return;
+    const onTurnId = s.auction.participants[s.auction.turnIndex];
     const remaining = s.auction.participants.filter((id) => id !== playerId);
     if (remaining.length === 0) {
       // No one wants to bid. Bank buys for $1 (current bid or $1)
       get().endAuction();
       return;
     }
-    const newTurnIndex = s.auction.turnIndex >= remaining.length ? 0 : s.auction.turnIndex;
+    // Track the rotation by PLAYER, not by raw index: removing a seat shifts the
+    // array, so a kept index would silently hand the turn to someone else. If the
+    // leaver was the one on turn, the seat that slid into their slot goes next.
+    const newTurnIndex =
+      onTurnId === playerId
+        ? s.auction.turnIndex % remaining.length
+        : remaining.indexOf(onTurnId);
     set({
       auction: {
         ...s.auction,
@@ -1155,6 +1186,12 @@ export const useGame = create<GameStore>()(
   endTurn: () => {
     let s = get();
     if (s.turnPhase === "GAME_OVER" || s.turnPhase === "AUCTION" || s.turnPhase === "CARD_DRAW") return;
+    // Never end a turn while dice/token animation or a pending decision is still
+    // in flight — in hotseat play an eager click here used to advance the seat
+    // mid-walk, stranding the token and skipping the landing action.
+    if (s.turnPhase === "ROLLING_DICE" || s.turnPhase === "MOVING") return;
+    if (s.pendingSpaceAction !== null || s.pendingCard !== null) return;
+    if (s.pendingFiscal !== null || s.pendingRescue !== null) return;
     // The player whose turn just ended pays this round's loan installment and
     // any property-holding tax before the seat passes on.
     serviceBankAndGovernment(get, set, s.currentPlayerIndex);
