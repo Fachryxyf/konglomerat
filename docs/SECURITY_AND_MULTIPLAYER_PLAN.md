@@ -1,4 +1,4 @@
-# Rencana Keamanan & Multiplayer — Web Monopoly
+# Rencana Keamanan & Multiplayer — Konglomerat
 
 Dokumen ini merancang cara menutup tiga kekhawatiran keamanan — **anti-cheat**,
 **anti parameter injection**, dan **anti manipulasi DOM** — sekaligus jalur
@@ -8,6 +8,13 @@ melainkan **satu prinsip yang sama**.
 > Untuk gambaran besar urutan menuju launch (multiplayer, IP/trademark, mobile,
 > akun/DB, ops), lihat [`LAUNCH_ROADMAP.md`](./LAUNCH_ROADMAP.md). Dokumen ini
 > adalah deep-dive teknis dari Fase A roadmap tersebut.
+
+> **Status jujur:** ini **rencana**, bukan deskripsi sistem yang sudah jalan.
+> Hari ini engine hidup sepenuhnya di client, jadi **belum ada anti-cheat sejati** —
+> state bisa dimanipulasi dari devtools. Yang sudah berdiri adalah *fondasinya*:
+> RNG deterministik, kosakata `Intent`, validasi berlapis, dan satu gerbang
+> `dispatch` yang dilewati semua aksi pemain. Checklist §6 menandai dengan tepat
+> mana yang sudah dan mana yang belum.
 
 ---
 
@@ -56,9 +63,13 @@ Syarat determinisme (krusial untuk otoritas server & anti-cheat):
 - **Tanpa `Date.now()` / timer** di dalam engine.
 - **Tanpa `get()/set()` Zustand** — state masuk-keluar sebagai argumen & return.
 
-> Engine-mu sudah setengah jalan: `bank.ts`, `government.ts`, `ai.ts`, `utils.ts`
-> sudah modul pure. Pekerjaan utama Phase 0 adalah melepas `gameStore`'s actions
-> dari `get()/set()` jadi fungsi `(state, intent) => state`.
+> Engine sudah setengah jalan: `bank.ts`, `government.ts`, `ai.ts`, `utils.ts`,
+> `fiscal.ts`, `events.ts` sudah modul pure, dan RNG sudah lewat seam `rng()`.
+> Sisa pekerjaan Phase 0: melepas action `gameStore` dari `get()/set()` jadi
+> `(state, intent) => state`. Penghalang nyatanya bukan Zustand melainkan **28
+> `setTimeout`** yang menjadwalkan animasi di dalam transisi — jeda langkah pion,
+> delay "berpikir" AI, auto-endTurn. Selama jadwal itu bagian dari transisi,
+> fungsinya tak bisa murni dan server tak bisa menjalankannya.
 
 ### 1.2 Aliran data
 

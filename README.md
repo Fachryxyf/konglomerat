@@ -22,7 +22,9 @@ pemerintahan & "jalur belakang" (suap/korupsi), hingga penyelamatan investor.
 Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 
 **Demo:** **https://konglomerat.fachryxyf.com/konglomerat**
-**Status:** `v1.0.0-beta` — fitur lengkap, single-device (hotseat) vs AI.
+**Status:** `v1.0.0-beta` — single-device hotseat vs AI; gameplay inti lengkap.
+Multiplayer lintas perangkat, akun, match history, dan mobile responsif **belum ada** —
+lihat [Roadmap](#roadmap).
 
 ![Konglomerat — papan permainan](docs/screenshots/board.png)
 
@@ -48,7 +50,12 @@ Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 - Event acak berperingkat (Reguler → Mythos), kartu **Kesempatan** & **Dana Umum**.
 
 **Lain-lain**
-- Buku panduan lengkap dalam game, katalog properti & kartu, simpan-otomatis (resume setelah refresh), kontrol keyboard (Spasi).
+- Buku panduan lengkap dalam game **dan di laman publik** (satu sumber isi, bilingual ID/EN), katalog properti & kartu, simpan-otomatis (resume setelah refresh), kontrol keyboard (Spasi), dark mode.
+
+**Batasan yang perlu diketahui**
+- **Hotseat, bukan online.** Semua pemain (manusia & AI) bergiliran di satu perangkat; tidak ada room, join-code, atau lawan lintas jaringan.
+- **Desktop-only** — papan butuh layar lebar; layar kecil mendapat halaman peringatan.
+- **Tanpa akun & tanpa riwayat pertandingan.** Progres disimpan di `localStorage` browser, jadi hilang bila storage dibersihkan dan tidak ikut pindah perangkat.
 
 ## Teknologi
 
@@ -59,13 +66,15 @@ Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 | State | Zustand (+ `persist`, penyimpanan ter-debounce) |
 | UI | Tailwind CSS, Radix UI, lucide-react |
 | Validasi | Zod |
+| Test | Vitest (43 test: aturan main, gerbang intent, determinisme) |
 | Runtime/PM | Bun |
 
 ## Arsitektur (ringkas)
 
 - **Engine terisolasi** di `src/lib/monopoly/` — modul pure (`bank.ts`, `government.ts`, `ai.ts`, `events.ts`, `fiscal.ts`, `utils.ts`) + store Zustand (`gameStore.ts`).
-- **Lapisan keamanan (siap server-authoritative):** RNG yang dapat di-seed (`rng.ts`), kosakata `Intent` (`intents.ts`), validasi berlapis `parseIntent` (zod) → `validateIntent` (aturan) → `checkInvariants`, semuanya lewat satu gerbang `dispatch`.
-- Rencana keamanan & jalur multiplayer didokumentasikan di [`docs/SECURITY_AND_MULTIPLAYER_PLAN.md`](docs/SECURITY_AND_MULTIPLAYER_PLAN.md) dan [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md).
+- **Arsitektur disiapkan untuk multiplayer server-authoritative** — belum server-authoritative. Yang sudah berdiri: RNG yang dapat di-seed (`rng.ts`, terbukti deterministik), kosakata `Intent` (`intents.ts`), validasi berlapis `parseIntent` (zod) → `validateIntent` (aturan) → `checkInvariants`, dan satu gerbang `dispatch` yang kini dilewati **semua** aksi pemain dari UI (`use-intent.ts`) dengan aktor eksplisit.
+- **Yang belum:** `applyIntent(state, intent, ctx)` masih belum murni — orkestrasi giliran memakai `setTimeout` untuk animasi, sehingga transisi state belum bisa dijalankan server tanpa timer. Efek (log/animasi) juga masih ditulis di tengah transisi, belum keluar sebagai `GameEvent`. Selama engine hidup di client, **state tetap bisa dimanipulasi** dari devtools; anti-cheat sejati baru datang bersama server.
+- Rencana keamanan & jalur multiplayer, termasuk daftar sisa pekerjaan yang jujur, ada di [`docs/SECURITY_AND_MULTIPLAYER_PLAN.md`](docs/SECURITY_AND_MULTIPLAYER_PLAN.md) dan [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md).
 
 ## Menjalankan lokal
 
@@ -82,6 +91,13 @@ bun run build        # next build (standalone) + salin static/public
 bun run start        # serve di port 3737
 ```
 
+Test (Vitest — regresi aturan main & gerbang intent):
+
+```bash
+bun run test         # sekali jalan
+bun run test:watch   # mode watch
+```
+
 > Desktop-only by design — papan butuh layar lebar; di layar kecil tampil halaman peringatan.
 
 ## Deploy
@@ -92,8 +108,14 @@ otomatis + systemd — ada di **[`docs/DEPLOY.md`](docs/DEPLOY.md)**, lengkap de
 
 ## Roadmap
 
-`v1` beta sekarang: single-device vs AI. Berikutnya (lihat [LAUNCH_ROADMAP](docs/LAUNCH_ROADMAP.md)):
-multiplayer real-time (server-authoritative + WebSocket + Redis), akun & match history, mobile responsif.
+Sekarang (`v1.0.0-beta`): single-device hotseat vs AI, gameplay inti lengkap.
+
+Belum ada, urut prioritas (detail di [LAUNCH_ROADMAP](docs/LAUNCH_ROADMAP.md)):
+
+1. **Fondasi multiplayer** — reducer murni (`applyIntent`) + `GameEvent` sebagai output engine. Ini sisa pekerjaan terbesar sebelum server mungkin.
+2. **Multiplayer real-time** — server-authoritative + WebSocket + Redis, lobby/join-code, reconnect, turn timeout.
+3. **Akun & match history** — identitas guest → auth, persistence ke Postgres.
+4. **Mobile responsif** — saat ini layar kecil diblok dengan halaman peringatan.
 
 ## Lisensi
 
