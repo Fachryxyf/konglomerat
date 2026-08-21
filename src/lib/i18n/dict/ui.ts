@@ -6,6 +6,25 @@ export const UI: Dict = {
   "ui.loading": { id: "Memuat permainan…", en: "Loading game…" },
   "ui.lang.label": { id: "Bahasa", en: "Language" },
 
+  // ── Public docs page (site root) ───────────────────────────────
+  "ui.docs.tagline": {
+    id: "Bangun imperium properti & ekonomi di Kota Raya.",
+    en: "Build a property & economy empire in Kota Raya.",
+  },
+  "ui.docs.intro": {
+    id: "Permainan papan strategi ekonomi untuk 2–8 pemain (campuran manusia & AI), dengan bank sentral, pinjaman berbunga, tahun fiskal, sampai jalur belakang pemerintahan.",
+    en: "An economic strategy board game for 2–8 players (mix of humans & AI), with a central bank, interest-bearing loans, fiscal years, and government back channels.",
+  },
+  "ui.docs.play": { id: "Mainkan sekarang", en: "Play now" },
+  "ui.docs.source": { id: "Kode sumber", en: "Source code" },
+  "ui.docs.rulebook": { id: "Buku Panduan", en: "Rulebook" },
+  "ui.docs.contents": { id: "Isi", en: "Contents" },
+  "ui.docs.status": { id: "Beta — desktop, hotseat & AI", en: "Beta — desktop, hotseat & AI" },
+  "ui.docs.desktopNote": {
+    id: "Papan butuh layar lebar. Buka dari desktop untuk pengalaman terbaik.",
+    en: "The board needs a wide screen. Open on desktop for the best experience.",
+  },
+
   // ── Board cell short labels & badges ──────────────────────────
   "ui.cell.go": { id: "MULAI", en: "GO" },
   "ui.cell.jail": { id: "PENJARA", en: "JAIL" },

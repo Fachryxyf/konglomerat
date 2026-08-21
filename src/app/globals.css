@@ -304,11 +304,3 @@
 .scrollbar-thin.dark::-webkit-scrollbar-thumb:hover {
   background-color: rgba(200, 200, 200, 0.5);
 }
-
-/* === Gate (restricted landing) — a single restrained fade === */
-@keyframes gate-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.gate-fade { animation: gate-fade 0.7s ease-out both; }
-
-@media (prefers-reduced-motion: reduce) {
-  .gate-fade { animation: none; }
-}
