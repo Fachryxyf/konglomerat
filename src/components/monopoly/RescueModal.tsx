@@ -1,6 +1,7 @@
 "use client";
 
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { HandCoins, X } from "lucide-react";
@@ -10,7 +11,7 @@ export default function RescueModal() {
   const t = useT();
   const pendingRescue = useGame((s) => s.pendingRescue);
   const players = useGame((s) => s.players);
-  const resolveRescue = useGame((s) => s.resolveRescue);
+  const send = useIntent();
 
   if (!pendingRescue || pendingRescue.queue.length === 0) return null;
   const investor = players[pendingRescue.queue[0]];
@@ -46,10 +47,10 @@ export default function RescueModal() {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={() => resolveRescue(true)} disabled={investor.balance < debt} className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1.5">
+          <Button onClick={() => send({ type: "RESOLVE_RESCUE", invest: true }, investor.id)} disabled={investor.balance < debt} className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1.5">
             <HandCoins className="w-4 h-4" /> {t("ui.rescue.invest", { debt: debt.toLocaleString() })}
           </Button>
-          <Button onClick={() => resolveRescue(false)} variant="outline" className="flex-1 gap-1.5">
+          <Button onClick={() => send({ type: "RESOLVE_RESCUE", invest: false }, investor.id)} variant="outline" className="flex-1 gap-1.5">
             <X className="w-4 h-4" /> {t("ui.rescue.reject")}
           </Button>
         </div>

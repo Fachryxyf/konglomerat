@@ -6,6 +6,7 @@ import { aiShouldBuyProperty, aiJailDecision, aiShouldBuild, aiShouldMortgage, a
 import { getSpace } from "@/lib/monopoly/utils";
 import { getPrice } from "@/lib/monopoly/boardData";
 import { rng } from "@/lib/monopoly/rng";
+import { sendIntent } from "@/lib/monopoly/use-intent";
 
 /**
  * Hook that runs AI logic automatically based on game phase
@@ -19,15 +20,7 @@ export function useAIController() {
   const pendingFiscal = useGame((s) => s.pendingFiscal);
   const pendingRescue = useGame((s) => s.pendingRescue);
 
-  const rollDice = useGame((s) => s.rollDice);
-  const buyProperty = useGame((s) => s.buyProperty);
-  const declineBuy = useGame((s) => s.declineBuy);
-  const jailDecision = useGame((s) => s.jailDecision);
-  const buildHouse = useGame((s) => s.buildHouse);
-  const buildHotel = useGame((s) => s.buildHotel);
-  const mortgageProperty = useGame((s) => s.mortgageProperty);
   const pendingCard = useGame((s) => s.pendingCard);
-  const dismissCard = useGame((s) => s.dismissCard);
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const tradeAttemptedTurnRef = useRef<number>(-1);
@@ -60,10 +53,10 @@ export function useAIController() {
         // Maybe bribe the guard out (corruption) before resorting to bail/roll.
         const gov = aiGovernmentDecision(useGame.getState(), player.id);
         if (gov?.type === "BRIBE_GUARD") {
-          addTimer(() => useGame.getState().bribeGuard(player.id), 2200);
+          addTimer(() => sendIntent({ type: "BRIBE_GUARD" }, player.id), 2200);
         } else {
           const decision = aiJailDecision(useGame.getState(), player.id);
-          addTimer(() => jailDecision(decision), 2500);
+          addTimer(() => sendIntent({ type: "JAIL_DECISION", decision }, player.id), 2500);
         }
       } else {
         // Manage the estate BEFORE rolling — the only window an AI gets, since the
@@ -79,8 +72,8 @@ export function useAIController() {
           const bank = aiBankDecision(useGame.getState(), player.id);
           if (bank) {
             addTimer(() => {
-              if (bank.type === "BORROW") useGame.getState().takeLoan(player.id, bank.amount, bank.term);
-              else useGame.getState().repayLoan(player.id, bank.loanId);
+              if (bank.type === "BORROW") sendIntent({ type: "TAKE_LOAN", amount: bank.amount, term: bank.term }, player.id);
+              else sendIntent({ type: "REPAY_LOAN", loanId: bank.loanId }, player.id);
             }, MANAGE_DELAY);
             return;
           }
@@ -91,8 +84,8 @@ export function useAIController() {
           const gov = aiGovernmentDecision(useGame.getState(), player.id);
           if (gov && gov.type !== "BRIBE_GUARD") {
             addTimer(() => {
-              if (gov.type === "LOBBY") useGame.getState().lobbyRegulation(player.id);
-              else if (gov.type === "EVADE") useGame.getState().armEvasion(player.id);
+              if (gov.type === "LOBBY") sendIntent({ type: "LOBBY" }, player.id);
+              else if (gov.type === "EVADE") sendIntent({ type: "ARM_EVASION" }, player.id);
             }, MANAGE_DELAY);
             return;
           }
@@ -101,8 +94,8 @@ export function useAIController() {
         const buildAction = aiShouldBuild(useGame.getState(), player.id);
         if (buildAction) {
           addTimer(() => {
-            if (buildAction.action === "HOUSE") buildHouse(buildAction.spaceIndex, buildAction.count);
-            else buildHotel(buildAction.spaceIndex);
+            if (buildAction.action === "HOUSE") sendIntent({ type: "BUILD_HOUSE", spaceIndex: buildAction.spaceIndex, count: buildAction.count }, player.id);
+            else sendIntent({ type: "BUILD_HOTEL", spaceIndex: buildAction.spaceIndex }, player.id);
           }, MANAGE_DELAY);
           return;
         }
@@ -111,7 +104,7 @@ export function useAIController() {
           unmortgageAttemptedTurnRef.current = curTurn;
           const redeemIdx = aiShouldUnmortgage(useGame.getState(), player.id);
           if (redeemIdx !== null) {
-            addTimer(() => useGame.getState().unmortgageProperty(redeemIdx), MANAGE_DELAY);
+            addTimer(() => sendIntent({ type: "UNMORTGAGE", spaceIndex: redeemIdx }, player.id), MANAGE_DELAY);
             return;
           }
         }
@@ -120,7 +113,7 @@ export function useAIController() {
           auctionAttemptedTurnRef.current = curTurn;
           const auctionIdx = aiShouldAuctionOwn(useGame.getState(), player.id);
           if (auctionIdx !== null) {
-            addTimer(() => useGame.getState().auctionOwnProperty(auctionIdx), MANAGE_DELAY);
+            addTimer(() => sendIntent({ type: "AUCTION_OWN", spaceIndex: auctionIdx }, player.id), MANAGE_DELAY);
             return;
           }
         }
@@ -133,13 +126,13 @@ export function useAIController() {
           if (rng() < tradeGate) {
             const offer = aiProposeTrade(useGame.getState(), player.id);
             if (offer) {
-              addTimer(() => useGame.getState().proposeTrade(offer), MANAGE_DELAY);
+              addTimer(() => sendIntent({ type: "PROPOSE_TRADE", trade: offer }, player.id), MANAGE_DELAY);
               return;
             }
           }
         }
         // Nothing left to manage → roll the dice.
-        addTimer(() => rollDice(), 1300);
+        addTimer(() => sendIntent({ type: "ROLL_DICE" }, player.id), 1300);
       }
     }
 
@@ -149,15 +142,15 @@ export function useAIController() {
       if (space.type === "TAX" && (space as { taxType: string }).taxType === "INCOME") {
         const playerNet = player.balance + player.properties.reduce((sum, idx) => sum + getPrice(getSpace(idx)), 0);
         if (playerNet * 0.1 < 200) {
-          addTimer(() => useGame.getState().payTenPercentTax(), 1800);
+          addTimer(() => sendIntent({ type: "PAY_TAX", mode: "PERCENT" }, player.id), 1800);
         } else {
-          addTimer(() => useGame.getState().payFlatTax(), 1800);
+          addTimer(() => sendIntent({ type: "PAY_TAX", mode: "FLAT" }, player.id), 1800);
         }
       } else if (space.type === "PROPERTY" || space.type === "RAILROAD" || space.type === "UTILITY") {
         if (aiShouldBuyProperty(useGame.getState(), player.id, pendingSpaceAction)) {
-          addTimer(() => buyProperty(), 1800);
+          addTimer(() => sendIntent({ type: "BUY_PROPERTY" }, player.id), 1800);
         } else {
-          addTimer(() => declineBuy(), 1800);
+          addTimer(() => sendIntent({ type: "DECLINE_BUY" }, player.id), 1800);
         }
       }
     }
@@ -168,7 +161,7 @@ export function useAIController() {
       addTimer(() => {
         const s = useGame.getState();
         if (s.pendingCard && s.turnPhase === "CARD_DRAW") {
-          dismissCard();
+          sendIntent({ type: "DISMISS_CARD" }, player.id);
         }
       }, 8000);
     }
@@ -179,12 +172,12 @@ export function useAIController() {
     // left the AI needing cash, raise it so the turn can settle cleanly.
     if (turnPhase === "POST_ACTION") {
       const mortgageIdx = aiShouldMortgage(useGame.getState(), player.id);
-      if (mortgageIdx !== null) addTimer(() => mortgageProperty(mortgageIdx), 300);
+      if (mortgageIdx !== null) addTimer(() => sendIntent({ type: "MORTGAGE", spaceIndex: mortgageIdx }, player.id), 300);
     }
 
     return () => {
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current = [];
     };
-  }, [players, currentPlayerIndex, turnPhase, pendingSpaceAction, pendingCard, pendingTrade, pendingFiscal, pendingRescue, rollDice, buyProperty, declineBuy, jailDecision, buildHouse, buildHotel, mortgageProperty, dismissCard]);
+  }, [players, currentPlayerIndex, turnPhase, pendingSpaceAction, pendingCard, pendingTrade, pendingFiscal, pendingRescue]);
 }

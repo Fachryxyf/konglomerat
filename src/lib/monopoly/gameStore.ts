@@ -1969,6 +1969,7 @@ function applyIntentToStore(get: () => GameState & GameStore, intent: Intent, ac
     case "AUCTION_OWN": return a.auctionOwnProperty(intent.spaceIndex);
     case "AUCTION_BID": return a.auctionBid(actor, intent.amount);
     case "AUCTION_PASS": return a.auctionPass(actor);
+    case "AUCTION_LEAVE": return a.auctionLeave(actor);
     case "TAKE_LOAN": return a.takeLoan(actor, intent.amount, intent.term);
     case "REPAY_LOAN": return a.repayLoan(actor, intent.loanId);
     case "BRIBE_GUARD": return a.bribeGuard(actor);

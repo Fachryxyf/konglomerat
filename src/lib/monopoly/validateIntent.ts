@@ -164,7 +164,10 @@ export function validateIntent(state: ValidatableState, intent: Intent, actorId:
       return ok;
     }
 
-    case "AUCTION_PASS": {
+    // Passing and leaving are the same withdrawal from the player's point of view;
+    // both simply take the actor out of the running bid.
+    case "AUCTION_PASS":
+    case "AUCTION_LEAVE": {
       const a = s.auction;
       if (!a.isActive) return fail("Tidak ada lelang berjalan.");
       if (!a.participants.includes(actorId)) return fail("Kamu tidak ikut lelang ini.");

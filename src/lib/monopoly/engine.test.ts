@@ -234,6 +234,36 @@ describe("jail", () => {
   });
 });
 
+describe("no UI path bypasses the intent gate", () => {
+  it("refuses a devtools-style out-of-turn action through dispatch", () => {
+    start(HUMANS(3), 1500);
+    // The classic cheat: call an action for a player who is not on turn.
+    const res = useGame.getState().dispatch({ type: "ROLL_DICE" }, 2);
+    expect(res.ok).toBe(false);
+    expect(useGame.getState().currentPlayerIndex).toBe(0);
+  });
+
+  it("refuses a build with no monopoly through dispatch", () => {
+    start(HUMANS(2), 5000);
+    // Own only ONE tile of the Brown set — building must be refused.
+    useGame.setState((st) => ({
+      players: st.players.map((p) => (p.id === 0 ? { ...p, properties: [1] } : p)),
+      ownership: { ...st.ownership, 1: { ownerId: 0, mortgaged: false, houses: 0, hotel: false } },
+    }));
+    const res = useGame.getState().dispatch({ type: "BUILD_HOUSE", spaceIndex: 1, count: 1 }, 0);
+    expect(res.ok).toBe(false);
+    expect(useGame.getState().buildings[1]?.houses ?? 0).toBe(0);
+  });
+
+  it("refuses borrowing past the credit limit through dispatch", () => {
+    start(HUMANS(2), 100);
+    const before = useGame.getState().players[0].balance;
+    const res = useGame.getState().dispatch({ type: "TAKE_LOAN", amount: 999_999, term: 5 }, 0);
+    expect(res.ok).toBe(false);
+    expect(useGame.getState().players[0].balance).toBe(before);
+  });
+});
+
 describe("state integrity", () => {
   it("holds invariants through a full scripted game of dice rolls", () => {
     resetRng();

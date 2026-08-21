@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGame } from "@/lib/monopoly/gameStore";
+import { sendIntent } from "@/lib/monopoly/use-intent";
 import { useAIController } from "@/hooks/use-ai-controller";
 import PlayerSetup from "@/components/monopoly/PlayerSetup";
 import GameBoard from "@/components/monopoly/GameBoard";
@@ -165,7 +166,7 @@ export default function Home() {
         // Skip the reveal with Space on ANY turn — including fast-forwarding an
         // AI's card so the human doesn't have to wait out its 3s countdown.
         e.preventDefault();
-        useGame.getState().dismissCard();
+        sendIntent({ type: "DISMISS_CARD" });
         return;
       }
       if (pendingRent) { e.preventDefault(); dismissRent(); return; }
@@ -176,7 +177,7 @@ export default function Home() {
       const cur = s.players[s.currentPlayerIndex];
       if (cur?.type === "HUMAN" && s.turnPhase === "WAITING_ROLL" && !cur.inJail) {
         e.preventDefault();
-        s.rollDice();
+        sendIntent({ type: "ROLL_DICE" }, cur.id);
       }
     };
     // Capture phase so we run before Radix Dialog's react-remove-scroll, which

@@ -31,6 +31,7 @@ export type Intent =
   | { type: "AUCTION_OWN"; spaceIndex: number }
   | { type: "AUCTION_BID"; amount: number }
   | { type: "AUCTION_PASS" }
+  | { type: "AUCTION_LEAVE" }
   | { type: "TAKE_LOAN"; amount: number; term: number }
   | { type: "REPAY_LOAN"; loanId: number }
   | { type: "BRIBE_GUARD" }

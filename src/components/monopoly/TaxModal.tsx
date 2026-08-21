@@ -2,6 +2,7 @@
 
 import { useGame } from "@/lib/monopoly/gameStore";
 import { getNetWorthPublic } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
@@ -17,8 +18,7 @@ export default function TaxModal({ onClose }: Props) {
   const pendingSpaceAction = useGame((s) => s.pendingSpaceAction);
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
-  const payTenPercent = useGame((s) => s.payTenPercentTax);
-  const payFlat = useGame((s) => s.payFlatTax);
+  const send = useIntent();
   const game = useGame();
 
   if (pendingSpaceAction === null) return null;
@@ -45,8 +45,7 @@ export default function TaxModal({ onClose }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={() => {
-                payTenPercent();
-                onClose();
+                if (send({ type: "PAY_TAX", mode: "PERCENT" })) onClose();
               }}
               variant="outline"
               className="flex flex-col items-center h-auto py-3"
@@ -56,8 +55,7 @@ export default function TaxModal({ onClose }: Props) {
             </Button>
             <Button
               onClick={() => {
-                payFlat();
-                onClose();
+                if (send({ type: "PAY_TAX", mode: "FLAT" })) onClose();
               }}
               variant="outline"
               className="flex flex-col items-center h-auto py-3"

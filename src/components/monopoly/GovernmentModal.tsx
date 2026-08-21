@@ -7,6 +7,7 @@ import {
   EVADE_PAY_FRACTION, MAX_HEAT,
 } from "@/lib/monopoly/government";
 import { getNetWorthPublic } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Landmark, ShieldAlert, Gavel, Handshake, FileWarning, KeyRound } from "lucide-react";
@@ -21,10 +22,7 @@ export default function GovernmentModal({ playerId, onClose }: Props) {
   const t = useT();
   const state = useGame();
   const player = state.players[playerId];
-  const bribeGuard = useGame((s) => s.bribeGuard);
-  const lobbyRegulation = useGame((s) => s.lobbyRegulation);
-  const armEvasion = useGame((s) => s.armEvasion);
-  const rigAuction = useGame((s) => s.rigAuction);
+  const send = useIntent();
 
   if (!player) return null;
 
@@ -76,7 +74,7 @@ export default function GovernmentModal({ playerId, onClose }: Props) {
             meta={t("ui.gov.metaCostRiskFine", { cost: BRIBE_GUARD_COST, pct: pct(CRIMES.BRIBE_GUARD.baseRisk), fine: BRIBE_GUARD_FINE })}
             disabled={!isActor || !player.inJail || player.balance < BRIBE_GUARD_COST}
             cta={t("ui.gov.cta.bribe", { cost: BRIBE_GUARD_COST })}
-            onClick={() => bribeGuard(playerId)}
+            onClick={() => send({ type: "BRIBE_GUARD" }, playerId)}
             hint={!player.inJail ? t("ui.gov.hint.jailOnly") : undefined}
           />
           <CrimeCard
@@ -86,7 +84,7 @@ export default function GovernmentModal({ playerId, onClose }: Props) {
             meta={t("ui.gov.metaCostRiskFine", { cost: LOBBY_COST, pct: pct(CRIMES.LOBBY.baseRisk), fine: LOBBY_FINE })}
             disabled={!isActor || player.inJail || player.lobbyActive || player.balance < LOBBY_COST}
             cta={player.lobbyActive ? t("ui.gov.cta.perkActive") : t("ui.gov.cta.lobby", { cost: LOBBY_COST })}
-            onClick={() => lobbyRegulation(playerId)}
+            onClick={() => send({ type: "LOBBY" }, playerId)}
           />
           <CrimeCard
             icon={<FileWarning className="w-4 h-4" />}
@@ -96,7 +94,7 @@ export default function GovernmentModal({ playerId, onClose }: Props) {
             disabled={!isActor || player.inJail}
             cta={player.evadeNextRent ? t("ui.gov.cta.evadeOff") : t("ui.gov.cta.evadeOn")}
             active={player.evadeNextRent}
-            onClick={() => armEvasion(playerId)}
+            onClick={() => send({ type: "ARM_EVASION" }, playerId)}
           />
           <CrimeCard
             icon={<Gavel className="w-4 h-4" />}
@@ -105,7 +103,7 @@ export default function GovernmentModal({ playerId, onClose }: Props) {
             meta={auctionActive ? t("ui.gov.metaCostRiskFine", { cost: rigAuctionCost(state.auction.currentBid), pct: pct(CRIMES.RIG_AUCTION.baseRisk), fine: RIG_AUCTION_FINE }) : t("ui.gov.metaRigInactive", { pct: pct(CRIMES.RIG_AUCTION.baseRisk) })}
             disabled={!isActor || player.inJail || !inAuction}
             cta={t("ui.gov.cta.rig")}
-            onClick={() => rigAuction(playerId)}
+            onClick={() => send({ type: "RIG_AUCTION" }, playerId)}
             hint={!auctionActive ? t("ui.gov.hint.noAuction") : !inAuction ? t("ui.gov.hint.notInAuction") : undefined}
           />
         </div>

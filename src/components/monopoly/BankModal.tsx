@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useGame, getCreditLimitPublic, getNetWorthPublic } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { LOAN_TERMS, loanInterestRate, totalDebt } from "@/lib/monopoly/bank";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,8 +18,7 @@ export default function BankModal({ playerId, onClose }: Props) {
   const t = useT();
   const state = useGame();
   const player = state.players[playerId];
-  const takeLoan = useGame((s) => s.takeLoan);
-  const repayLoan = useGame((s) => s.repayLoan);
+  const send = useIntent();
 
   const [term, setTerm] = useState<number>(LOAN_TERMS[1]);
   const [amount, setAmount] = useState<number>(0);
@@ -94,7 +94,7 @@ export default function BankModal({ playerId, onClose }: Props) {
                     variant="outline"
                     className="h-7 text-[11px]"
                     disabled={!isMyTurnHuman || player.balance < payoff}
-                    onClick={() => repayLoan(playerId, loan.id)}
+                    onClick={() => send({ type: "REPAY_LOAN", loanId: loan.id }, playerId)}
                   >
                     {t("ui.bank.repay", { v: payoff })}
                   </Button>
@@ -154,7 +154,7 @@ export default function BankModal({ playerId, onClose }: Props) {
               <Button
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={!canBorrow}
-                onClick={() => { takeLoan(playerId, reqAmount, term); setAmount(0); }}
+                onClick={() => { if (send({ type: "TAKE_LOAN", amount: reqAmount, term }, playerId)) setAmount(0); }}
               >
                 {isMyTurnHuman ? t("ui.bank.borrow", { v: reqAmount }) : t("ui.bank.turnOnly")}
               </Button>

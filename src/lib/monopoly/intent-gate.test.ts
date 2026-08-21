@@ -145,6 +145,75 @@ describe("layer 3 — dispatch (gate + apply + invariants)", () => {
   });
 });
 
+describe("actor authority (the seam a server will enforce)", () => {
+  it("credits the acting player, not the seat, for an auction bid", () => {
+    start(HUMANS(3));
+    useGame.setState({ pendingSpaceAction: 1, turnPhase: "ACTION" });
+    useGame.getState().declineBuy();
+    const a = useGame.getState().auction;
+    const bidder = a.participants[a.turnIndex];
+    // The bidder on turn in an auction is usually NOT the player whose game turn
+    // it is — dispatching without an explicit actor would attribute it wrongly.
+    const res = useGame.getState().dispatch({ type: "AUCTION_BID", amount: 60 }, bidder);
+    expect(res.ok).toBe(true);
+    expect(useGame.getState().auction.currentBidderId).toBe(bidder);
+  });
+
+  it("lets a queued non-turn player resolve their own fiscal choice", () => {
+    start(HUMANS(3));
+    useGame.setState({
+      pendingFiscal: {
+        kind: "TAX",
+        titleKey: "x",
+        introKey: "y",
+        choices: [{ id: "PAY_FULL", labelKey: "l", descKey: "d" }],
+        queue: [2],
+      },
+      currentPlayerIndex: 0,
+    });
+    // Player 2 is not on turn, but IS the one being asked.
+    expect(useGame.getState().dispatch({ type: "RESOLVE_FISCAL", choiceId: "PAY_FULL" }, 2).ok).toBe(true);
+  });
+
+  it("refuses a fiscal choice from a player who was not asked", () => {
+    start(HUMANS(3));
+    useGame.setState({
+      pendingFiscal: {
+        kind: "TAX",
+        titleKey: "x",
+        introKey: "y",
+        choices: [{ id: "PAY_FULL", labelKey: "l", descKey: "d" }],
+        queue: [2],
+      },
+    });
+    expect(useGame.getState().dispatch({ type: "RESOLVE_FISCAL", choiceId: "PAY_FULL" }, 1).ok).toBe(false);
+  });
+
+  it("only the trade recipient may accept", () => {
+    start(HUMANS(3));
+    useGame.setState({
+      pendingTrade: {
+        fromId: 0, toId: 1, cashFrom: 0, cashTo: 0,
+        propertiesFrom: [], propertiesTo: [], goojFrom: 0, goojTo: 0,
+      },
+    });
+    expect(useGame.getState().dispatch({ type: "ACCEPT_TRADE" }, 2).ok).toBe(false);
+    expect(useGame.getState().dispatch({ type: "ACCEPT_TRADE" }, 1).ok).toBe(true);
+  });
+
+  it("treats AUCTION_LEAVE as a first-class intent", () => {
+    start(HUMANS(3));
+    useGame.setState({ pendingSpaceAction: 1, turnPhase: "ACTION" });
+    useGame.getState().declineBuy();
+    const before = useGame.getState().auction.participants.length;
+    const leaver = useGame.getState().auction.participants[0];
+    expect(useGame.getState().dispatch({ type: "AUCTION_LEAVE" }, leaver).ok).toBe(true);
+    expect(useGame.getState().auction.participants).toHaveLength(before - 1);
+    // ...and a second leave from the same player is refused, not silently ignored.
+    expect(useGame.getState().dispatch({ type: "AUCTION_LEAVE" }, leaver).ok).toBe(false);
+  });
+});
+
 describe("determinism (server-authoritative prerequisite)", () => {
   it("produces identical dice sequences for the same seed", () => {
     const rollTen = (seed: number) => {

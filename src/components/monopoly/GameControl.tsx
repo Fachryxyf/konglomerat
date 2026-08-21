@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dices, Lock, ArrowRight, Loader2 } from "lucide-react";
@@ -15,9 +16,7 @@ export default function GameControl() {
   const lastDiceRoll = useGame((s) => s.lastDiceRoll);
   const doublesCount = useGame((s) => s.doublesCount);
   const lastRollSummary = useGame((s) => s.lastRollSummary);
-  const rollDice = useGame((s) => s.rollDice);
-  const endTurn = useGame((s) => s.endTurn);
-  const jailDecision = useGame((s) => s.jailDecision);
+  const send = useIntent();
 
   const player = players[currentPlayerIndex];
   const rolling = turnPhase === "ROLLING_DICE";
@@ -42,9 +41,9 @@ export default function GameControl() {
 
   const handleRoll = () => {
     if (player.inJail) {
-      jailDecision("ROLL");
+      send({ type: "JAIL_DECISION", decision: "ROLL" });
     } else {
-      rollDice();
+      send({ type: "ROLL_DICE" });
     }
   };
 
@@ -113,7 +112,7 @@ export default function GameControl() {
           <div className="space-y-1">
             <div className="text-[10px] text-center text-red-200 font-semibold inline-flex items-center gap-1 justify-center w-full"><Lock className="w-3 h-3" /> {t("ui.control.jailChoice")}</div>
             <Button
-              onClick={() => jailDecision("PAY")}
+              onClick={() => send({ type: "JAIL_DECISION", decision: "PAY" })}
               size="sm"
               variant="secondary"
               className="w-full text-xs h-8"
@@ -123,7 +122,7 @@ export default function GameControl() {
             </Button>
             {player.getOutOfJailCards > 0 && (
               <Button
-                onClick={() => jailDecision("CARD")}
+                onClick={() => send({ type: "JAIL_DECISION", decision: "CARD" })}
                 size="sm"
                 variant="secondary"
                 className="w-full text-xs h-8"
@@ -142,7 +141,7 @@ export default function GameControl() {
         )}
         {turnPhase === "POST_ACTION" && isHuman && (
           <Button
-            onClick={endTurn}
+            onClick={() => send({ type: "END_TURN" })}
             size="lg"
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm sm:text-base"
           >

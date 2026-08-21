@@ -1,6 +1,7 @@
 "use client";
 
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { getSpace, getPrice } from "@/lib/monopoly/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -15,8 +16,7 @@ export default function TradeProposalModal({ onClose }: Props) {
   const t = useT();
   const pendingTrade = useGame((s) => s.pendingTrade);
   const players = useGame((s) => s.players);
-  const acceptTrade = useGame((s) => s.acceptTrade);
-  const rejectTrade = useGame((s) => s.rejectTrade);
+  const send = useIntent();
 
   if (!pendingTrade) return null;
   const from = players[pendingTrade.fromId];
@@ -90,10 +90,10 @@ export default function TradeProposalModal({ onClose }: Props) {
         )}
 
         <div className="flex gap-2">
-          <Button onClick={() => { acceptTrade(); onClose(); }} className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1.5">
+          <Button onClick={() => { if (send({ type: "ACCEPT_TRADE" }, pendingTrade.toId)) onClose(); }} className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1.5">
             <Check className="w-4 h-4" /> {t("ui.trade.accept")}
           </Button>
-          <Button onClick={() => { rejectTrade(); onClose(); }} variant="outline" className="flex-1 gap-1.5">
+          <Button onClick={() => { if (send({ type: "REJECT_TRADE" }, pendingTrade.toId)) onClose(); }} variant="outline" className="flex-1 gap-1.5">
             <X className="w-4 h-4" /> {t("ui.trade.reject")}
           </Button>
         </div>

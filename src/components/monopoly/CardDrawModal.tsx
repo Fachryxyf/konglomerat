@@ -1,6 +1,7 @@
 "use client";
 
 import { useGame } from "@/lib/monopoly/gameStore";
+import { sendIntent } from "@/lib/monopoly/use-intent";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,6 @@ interface Props {
 
 export default function CardDrawModal({ onClose }: Props) {
   const pendingCard = useGame((s) => s.pendingCard);
-  const dismissCard = useGame((s) => s.dismissCard);
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
 
@@ -28,7 +28,9 @@ export default function CardDrawModal({ onClose }: Props) {
   return <CardDrawModalInner
     key={pendingCard.id + "-" + (isAITurn ? "ai" : "human")}
     pendingCard={pendingCard}
-    dismissCard={dismissCard}
+    // Silent dispatch: dismissing a card is never an illegal move the player
+    // needs warned about, and a double-dismiss race would just add toast noise.
+    dismissCard={() => sendIntent({ type: "DISMISS_CARD" })}
     isAITurn={isAITurn}
     currentPlayer={currentPlayer}
     onClose={onClose}
@@ -37,7 +39,7 @@ export default function CardDrawModal({ onClose }: Props) {
 
 interface InnerProps {
   pendingCard: NonNullable<ReturnType<typeof useGame.getState>["pendingCard"]>;
-  dismissCard: () => void;
+  dismissCard: () => boolean;
   isAITurn: boolean;
   currentPlayer: ReturnType<typeof useGame.getState>["players"][number] | undefined;
   onClose: () => void;
@@ -104,8 +106,7 @@ function CardDrawModalInner({ pendingCard, dismissCard, isAITurn, currentPlayer,
         ) : (
           <Button
             onClick={() => {
-              dismissCard();
-              onClose();
+              if (dismissCard()) onClose();
             }}
             className="w-full bg-emerald-600 hover:bg-emerald-700"
           >

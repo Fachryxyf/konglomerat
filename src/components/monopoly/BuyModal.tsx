@@ -1,6 +1,7 @@
 "use client";
 
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { getSpace, getPrice, getColorHex } from "@/lib/monopoly/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +23,7 @@ export default function BuyModal({ onClose }: Props) {
   const pendingSpaceAction = useGame((s) => s.pendingSpaceAction);
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
-  const buyProperty = useGame((s) => s.buyProperty);
-  const declineBuy = useGame((s) => s.declineBuy);
+  const send = useIntent();
 
   if (pendingSpaceAction === null) return null;
   const space = getSpace(pendingSpaceAction);
@@ -97,8 +97,7 @@ export default function BuyModal({ onClose }: Props) {
           <div className="flex gap-2">
             <Button
               onClick={() => {
-                buyProperty();
-                onClose();
+                if (send({ type: "BUY_PROPERTY" })) onClose();
               }}
               disabled={!canAfford}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
@@ -107,8 +106,7 @@ export default function BuyModal({ onClose }: Props) {
             </Button>
             <Button
               onClick={() => {
-                declineBuy();
-                onClose();
+                if (send({ type: "DECLINE_BUY" })) onClose();
               }}
               variant="outline"
               className="flex-1"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGame } from "@/lib/monopoly/gameStore";
+import { useIntent, sendIntent } from "@/lib/monopoly/use-intent";
 import { getSpace, getPrice, getColorHex } from "@/lib/monopoly/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +28,11 @@ export default function AuctionModal({ onClose }: Props) {
   const auction = useGame((s) => s.auction);
   const players = useGame((s) => s.players);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
-  const auctionBid = useGame((s) => s.auctionBid);
-  const auctionLeave = useGame((s) => s.auctionLeave);
-  const endAuction = useGame((s) => s.endAuction);
   const lastDiceRoll = useGame((s) => s.lastDiceRoll);
+  // Not a player intent — this is the store's own auction resolution, the same
+  // call the engine makes when bidding ends on its own.
+  const endAuction = useGame((s) => s.endAuction);
+  const send = useIntent();
 
   const [bidInput, setBidInput] = useState("");
 
@@ -49,14 +51,16 @@ export default function AuctionModal({ onClose }: Props) {
       if (auction.participants.length === 1 && auction.currentBid === 0) {
         aiBid = 1;
       }
+      // The AI acts as itself, not as "the current player": the bidder on turn in
+      // an auction is usually NOT the player whose game turn it is.
       if (aiBid > 0) {
-        auctionBid(currentBidderId, aiBid);
+        sendIntent({ type: "AUCTION_BID", amount: aiBid }, currentBidderId);
       } else {
-        auctionLeave(currentBidderId);
+        sendIntent({ type: "AUCTION_LEAVE" }, currentBidderId);
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [auction, players, auctionBid, auctionLeave, lastDiceRoll]);
+  }, [auction, players, lastDiceRoll]);
 
   if (!auction.isActive || auction.propertyIndex === null) return null;
 
@@ -72,8 +76,7 @@ export default function AuctionModal({ onClose }: Props) {
     const amount = parseInt(bidInput, 10);
     if (isNaN(amount) || amount < minNextBid) return;
     if (humanPlayer && amount > humanPlayer.balance) return;
-    auctionBid(currentBidderId, amount);
-    setBidInput("");
+    if (send({ type: "AUCTION_BID", amount }, currentBidderId)) setBidInput("");
   };
 
   const quickBids = [
@@ -179,7 +182,7 @@ export default function AuctionModal({ onClose }: Props) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => auctionLeave(currentBidderId)}
+                onClick={() => send({ type: "AUCTION_LEAVE" }, currentBidderId)}
                 className="text-xs text-red-600 hover:text-red-700"
               >
                 {t("ui.auction.leave")}
@@ -194,7 +197,9 @@ export default function AuctionModal({ onClose }: Props) {
           </div>
         )}
 
-        {/* End auction button (debug / manual) */}
+        {/* Safety valve: if a lone bidder is left holding the high bid and the
+            auto-resolve did not fire, let the player close the auction manually
+            rather than being stuck in a modal with no exit. */}
         {auction.participants.length === 1 && auction.currentBid > 0 && (
           <Button onClick={endAuction} className="w-full bg-blue-600 hover:bg-blue-700">
             {t("ui.auction.finish")}

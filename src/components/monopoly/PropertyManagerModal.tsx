@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useGame, getLiquidatableCash } from "@/lib/monopoly/gameStore";
+import { useIntent } from "@/lib/monopoly/use-intent";
 import { getSpace, getPrice, getColorHex, hasMonopoly, countRailroads } from "@/lib/monopoly/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -24,15 +25,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
   const buildings = useGame((s) => s.buildings);
   const bank = useGame((s) => s.bank);
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
-  const buildHouse = useGame((s) => s.buildHouse);
-  const sellHouse = useGame((s) => s.sellHouse);
-  const buildHotel = useGame((s) => s.buildHotel);
-  const sellHotel = useGame((s) => s.sellHotel);
-  const mortgageProperty = useGame((s) => s.mortgageProperty);
-  const unmortgageProperty = useGame((s) => s.unmortgageProperty);
-  const auctionOwnProperty = useGame((s) => s.auctionOwnProperty);
-  const sellToBank = useGame((s) => s.sellToBank);
-  const proposeTrade = useGame((s) => s.proposeTrade);
+  const send = useIntent();
 
   const player = players[playerId];
   const isOwnTurn = playerId === currentPlayerIndex;
@@ -115,7 +108,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => unmortgageProperty(idx)}
+                                onClick={() => send({ type: "UNMORTGAGE", spaceIndex: idx }, playerId)}
                                 disabled={player.balance < Math.ceil(getMortgageValuePub(space) * 1.1)}
                                 className="text-xs h-7"
                               >
@@ -125,7 +118,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => mortgageProperty(idx)}
+                                onClick={() => send({ type: "MORTGAGE", spaceIndex: idx }, playerId)}
                                 disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                                 className="text-xs h-7"
                               >
@@ -135,7 +128,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => { auctionOwnProperty(idx); onClose(); }}
+                              onClick={() => { if (send({ type: "AUCTION_OWN", spaceIndex: idx }, playerId)) onClose(); }}
                               disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                               className="text-xs h-7"
                               title={t("ui.pm.auctionTitle")}
@@ -145,7 +138,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => sellToBank(idx)}
+                              onClick={() => send({ type: "SELL_TO_BANK", spaceIndex: idx }, playerId)}
                               disabled={(b && (b.houses > 0 || b.hotel)) || (space.type === "PROPERTY" && hasColorSetBuildings(useGame.getState(), playerId, (space as PropertySpace).colorSet))}
                               className="text-xs h-7"
                               title={t("ui.pm.sellBankTitle", { v: o?.mortgaged ? 0 : getMortgageValuePub(space) })}
@@ -219,7 +212,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                         <Button
                                           key={`build-${count}`}
                                           size="sm"
-                                          onClick={() => buildHouse(idx, count)}
+                                          onClick={() => send({ type: "BUILD_HOUSE", spaceIndex: idx, count }, playerId)}
                                           disabled={!canAfford || !bankHas}
                                           className="text-[10px] h-6 px-2 bg-emerald-600 hover:bg-emerald-700"
                                           title={t("ui.pm.buildTitle", { count, cost })}
@@ -232,7 +225,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                     {currentHouses === 4 && (
                                       <Button
                                         size="sm"
-                                        onClick={() => buildHotel(idx)}
+                                        onClick={() => send({ type: "BUILD_HOTEL", spaceIndex: idx }, playerId)}
                                         disabled={player.balance < space.housePrice || bank.hotels === 0}
                                         className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-700"
                                         title={t("ui.pm.hotelTitle", { cost: space.housePrice })}
@@ -247,7 +240,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                               {!hasHotel && currentHouses === 4 && (
                                 <Button
                                   size="sm"
-                                  onClick={() => buildHotel(idx)}
+                                  onClick={() => send({ type: "BUILD_HOTEL", spaceIndex: idx }, playerId)}
                                   disabled={player.balance < space.housePrice || bank.hotels === 0}
                                   className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-700"
                                 >
@@ -259,7 +252,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => sellHotel(idx)}
+                                  onClick={() => send({ type: "SELL_HOTEL", spaceIndex: idx }, playerId)}
                                   className="text-[10px] h-6 px-2"
                                 >
                                   {t("ui.pm.sellHotelBtn", { refund: Math.floor(space.housePrice / 2) })}
@@ -277,7 +270,7 @@ export default function PropertyManagerModal({ playerId, onClose }: Props) {
                                           key={`sell-${count}`}
                                           size="sm"
                                           variant="outline"
-                                          onClick={() => sellHouse(idx, count)}
+                                          onClick={() => send({ type: "SELL_HOUSE", spaceIndex: idx, count }, playerId)}
                                           className="text-[10px] h-6 px-2 text-red-600 hover:text-red-700"
                                           title={t("ui.pm.sellHouseTitle", { count, refund })}
                                         >
@@ -337,7 +330,7 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
   const t = useT();
   const players = useGame((s) => s.players);
   const ownership = useGame((s) => s.ownership);
-  const proposeTrade = useGame((s) => s.proposeTrade);
+  const send = useIntent();
   const currentPlayerIndex = useGame((s) => s.currentPlayerIndex);
 
   const [partnerId, setPartnerId] = useState<number | null>(
@@ -364,16 +357,20 @@ function TradeTab({ playerId, onClose }: { playerId: number; onClose: () => void
   const handleSubmit = () => {
     if (!partner) return;
     // Cash may exceed current balance — the payer auto-liquidates on accept.
-    proposeTrade({
-      fromId: playerId,
-      toId: partnerId!,
-      cashFrom,
-      cashTo,
-      propertiesFrom,
-      propertiesTo,
-      goojFrom,
-      goojTo,
-    });
+    const sent = send({
+      type: "PROPOSE_TRADE",
+      trade: {
+        fromId: playerId,
+        toId: partnerId!,
+        cashFrom,
+        cashTo,
+        propertiesFrom,
+        propertiesTo,
+        goojFrom,
+        goojTo,
+      },
+    }, playerId);
+    if (!sent) return;
     setCashFrom(0); setCashTo(0);
     setPropertiesFrom([]); setPropertiesTo([]);
     setGoojFrom(0); setGoojTo(0);

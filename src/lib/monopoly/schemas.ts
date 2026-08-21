@@ -37,6 +37,7 @@ export const intentSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("AUCTION_OWN"), spaceIndex }),
   z.object({ type: z.literal("AUCTION_BID"), amount: money }),
   z.object({ type: z.literal("AUCTION_PASS") }),
+  z.object({ type: z.literal("AUCTION_LEAVE") }),
   z.object({ type: z.literal("TAKE_LOAN"), amount: money, term: z.union([z.literal(3), z.literal(5), z.literal(8)]) }),
   z.object({ type: z.literal("REPAY_LOAN"), loanId: z.number().int().positive() }),
   z.object({ type: z.literal("BRIBE_GUARD") }),
