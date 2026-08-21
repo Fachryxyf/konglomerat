@@ -1,0 +1,98 @@
+Hak Cipta (c) 2026 Fachry Fauzan Syafei
+All Rights Reserved / Seluruh hak dilindungi undang-undang
+
+================================================================================
+BAHASA INDONESIA
+================================================================================
+
+Perangkat lunak ini bersifat TERTUTUP (proprietary). Tidak ada izin yang
+diberikan kepada siapa pun untuk menggunakan, menyalin, mengubah, menggabungkan,
+menerbitkan, mendistribusikan, mensublisensikan, atau menjual salinan perangkat
+lunak ini, baik sebagian maupun seluruhnya, tanpa izin tertulis dari pemegang
+hak cipta.
+
+Kode sumber dapat dilihat secara terbuka di GitHub. Ketersediaan untuk dilihat
+BUKAN pemberian lisensi: melihat dan mempelajari kode diizinkan, menggunakan atau
+menurunkan karya darinya tidak.
+
+Yang DIIZINKAN tanpa izin tertulis:
+  - Membaca dan mempelajari kode sumber.
+  - Menjalankan salinan secara lokal untuk keperluan penilaian pribadi.
+  - Melakukan fork di GitHub untuk mengirim kontribusi kembali ke repositori ini.
+  - Mengutip potongan kode untuk keperluan ulasan, pengajaran, atau kritik,
+    dengan mencantumkan sumber.
+
+Yang TIDAK DIIZINKAN tanpa izin tertulis:
+  - Menerbitkan ulang, mendistribusikan, atau menyebarkan salinan.
+  - Memakai kode ini, seluruhnya atau sebagian, di dalam proyek lain.
+  - Menawarkan perangkat lunak ini sebagai layanan, berbayar maupun gratis.
+  - Penggunaan komersial dalam bentuk apa pun.
+  - Menghapus atau mengubah pemberitahuan hak cipta ini.
+
+Kontribusi: dengan mengirimkan pull request, kontributor memberikan kepada
+pemegang hak cipta lisensi permanen, bebas royalti, dan tidak dapat dicabut untuk
+memakai kontribusi tersebut di dalam perangkat lunak ini.
+
+Catatan merek dan mekanik permainan: nama "Konglomerat", desain papan, ilustrasi,
+dan seluruh teks adalah karya orisinal. Perangkat lunak ini TIDAK berafiliasi
+dengan, tidak disponsori oleh, dan bukan produk dari Hasbro atau pemegang merek
+permainan papan mana pun. Mekanik permainan papan pada umumnya tidak diklaim
+sebagai hak eksklusif oleh pemegang hak cipta.
+
+TANPA JAMINAN. Perangkat lunak ini disediakan "SEBAGAIMANA ADANYA", tanpa jaminan
+dalam bentuk apa pun, tersurat maupun tersirat, termasuk namun tidak terbatas pada
+jaminan kelayakan jual, kesesuaian untuk tujuan tertentu, dan tidak adanya
+pelanggaran hak. Dalam keadaan apa pun pemegang hak cipta tidak bertanggung jawab
+atas klaim, kerusakan, atau kewajiban lain, baik dalam tindakan kontrak, perbuatan
+melawan hukum, maupun lainnya, yang timbul dari atau berhubungan dengan perangkat
+lunak ini atau penggunaannya.
+
+Untuk meminta izin di luar yang tercantum di atas, hubungi pemegang hak cipta
+melalui https://github.com/Fachryxyf
+
+================================================================================
+ENGLISH
+================================================================================
+
+This software is PROPRIETARY. No permission is granted to any person to use,
+copy, modify, merge, publish, distribute, sublicense, or sell copies of this
+software, in whole or in part, without prior written permission from the
+copyright holder.
+
+The source code is publicly viewable on GitHub. Public visibility is NOT a grant
+of license: reading and studying the code is permitted, using it or deriving
+works from it is not.
+
+PERMITTED without written permission:
+  - Reading and studying the source code.
+  - Running a local copy for personal evaluation.
+  - Forking on GitHub for the purpose of contributing back to this repository.
+  - Quoting excerpts for review, teaching, or criticism, with attribution.
+
+NOT PERMITTED without written permission:
+  - Republishing, redistributing, or otherwise sharing copies.
+  - Using this code, in whole or in part, in any other project.
+  - Offering this software as a service, whether paid or free.
+  - Commercial use of any kind.
+  - Removing or altering this copyright notice.
+
+Contributions: by submitting a pull request, the contributor grants the copyright
+holder a perpetual, royalty-free, irrevocable license to use that contribution
+within this software.
+
+Trademark and game mechanics note: the name "Konglomerat", the board design,
+artwork, and all text are original works. This software is NOT affiliated with,
+sponsored by, or a product of Hasbro or any other board game rights holder.
+Board game mechanics in general are not claimed as exclusive rights by the
+copyright holder.
+
+NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+To request permission beyond the above, contact the copyright holder via
+https://github.com/Fachryxyf
