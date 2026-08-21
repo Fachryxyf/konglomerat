@@ -18,6 +18,7 @@ WorkingDirectory=/home/__USER__/konglomerat
 Environment=NODE_ENV=production
 Environment=PORT=3737
 Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_PUBLIC_SITE_URL=https://konglomerat.fachryxyf.com
 ExecStart=/home/__USER__/.bun/bin/bun .next/standalone/server.js
 Restart=on-failure
 RestartSec=3

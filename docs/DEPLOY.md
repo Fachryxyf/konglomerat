@@ -4,8 +4,8 @@ Panduan deploy ke VM Debian (mis. `e2-medium`, `asia-southeast2` Jakarta).
 Arsitektur: **Caddy** (80/443, HTTPS otomatis) → reverse proxy → **app** di
 `127.0.0.1:3737` yang dijaga **systemd**.
 
-> Ganti `USER` di bawah dengan user VM-mu (jalankan `whoami`), dan `example.com`
-> dengan domainmu.
+> Ganti `USER` di bawah dengan user VM-mu (jalankan `whoami`). Domain produksi:
+> `konglomerat.fachryxyf.com`.
 
 ---
 
@@ -59,7 +59,7 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --d
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update && sudo apt -y install caddy
 
-# pasang config (ganti example.com dgn domainmu lebih dulu di file)
+# pasang config (domain sudah diisi: konglomerat.fachryxyf.com)
 sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
 sudo nano /etc/caddy/Caddyfile      # set domainmu
 sudo systemctl reload caddy
@@ -77,7 +77,7 @@ sudo ufw status
 Port **3737 tidak dibuka** — app hanya bind ke localhost, diakses lewat Caddy.
 
 ## 7. Selesai
-Buka `https://example.com` (atau `http://IP_VM`).
+Buka `https://konglomerat.fachryxyf.com` (atau `http://IP_VM`).
 
 ---
 

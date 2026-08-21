@@ -1,11 +1,11 @@
 # Caddy = reverse proxy + HTTPS otomatis (Let's Encrypt).
-# Pasang: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile (ganti domain), lalu
+# Pasang: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile, lalu
 #   sudo systemctl reload caddy
 #
 # --- Dengan domain (REKOMENDASI: HTTPS otomatis) ---
-# Ganti example.com dengan domainmu (A record → IP statis VM). Caddy urus HTTPS.
+# A record konglomerat.fachryxyf.com → IP statis VM. Caddy urus HTTPS.
 # Game tersaji di /konglomerat.
-example.com {
+konglomerat.fachryxyf.com {
     encode zstd gzip
     reverse_proxy 127.0.0.1:3737
 }

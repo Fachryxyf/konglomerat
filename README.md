@@ -1,6 +1,6 @@
 # Konglomerat
 
-[![Live demo](https://img.shields.io/badge/demo-konglomerat-0f766e?logo=vercel&logoColor=white)](https://webgame.fachryxyf.com/konglomerat)
+[![Live demo](https://img.shields.io/badge/demo-konglomerat-0f766e?logo=vercel&logoColor=white)](https://konglomerat.fachryxyf.com/konglomerat)
 [![Release](https://img.shields.io/github/v/release/Fachryxyf/konglomerat?include_prereleases&sort=semver)](https://github.com/Fachryxyf/konglomerat/releases)
 [![Last commit](https://img.shields.io/github/last-commit/Fachryxyf/konglomerat)](https://github.com/Fachryxyf/konglomerat/commits/main)
 [![Issues](https://img.shields.io/github/issues/Fachryxyf/konglomerat)](https://github.com/Fachryxyf/konglomerat/issues)
@@ -21,7 +21,7 @@ dengan ekonomi yang hidup: bank sentral, pinjaman berbunga, tahun fiskal,
 pemerintahan & "jalur belakang" (suap/korupsi), hingga penyelamatan investor.
 Dibangun dengan **Next.js 16 + TypeScript + Tailwind + Zustand**.
 
-**Demo:** **https://webgame.fachryxyf.com/konglomerat**
+**Demo:** **https://konglomerat.fachryxyf.com/konglomerat**
 **Status:** `v1.0.0-beta` — fitur lengkap, single-device (hotseat) vs AI.
 
 ![Konglomerat — papan permainan](docs/screenshots/board.png)
